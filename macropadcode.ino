@@ -1,825 +1,172 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <EEPROM.h>
+#include <ArduinoJson.h>
+#include <BleKeyboard.h>
 
-const char* ssid = "KeyboardConfig";
+#define EEPROM_SIZE 1024
+#define MAPPING_COUNT 9
+#define MAX_KEYS_PER_MAPPING 3
+#define MAX_KEY_NAME_LEN 16
+
+// BLE Keyboard instance
+BleKeyboard bleKeyboard("DLS_MPAD", "Domestic Labs", 100);
+
+// WiFi credentials (AP Mode)
+const char* ssid = "DLS_MPAD";
 const char* password = "12345678";
 
 WebServer server(80);
+String keyMappings[MAPPING_COUNT][MAX_KEYS_PER_MAPPING];
 
-// EEPROM Configuration
-#define EEPROM_SIZE 1024
-#define EEPROM_SIGNATURE 0xAA55
-#define KEYMAP_START_ADDR 2
+// Matrix keypad setup
+const byte numRows = 3;
+const byte numCols = 3;
+byte rowPins[numRows] = {6, 1, 2};
+byte colPins[numCols] = {3, 4, 5};
+unsigned long lastPressTime[numRows][numCols] = {0};
+const unsigned long debounceDelay = 300;
 
-String keymap[3][3] = {
-  {"Ctrl+C", "Ctrl+V", "Ctrl+X"},
-  {"Alt+Tab", "Cmd+A", "Shift+Cmd+4"},
-  {"Win+L", "Ctrl+Alt+Del", "Alt+F4"}
-};
-
-// Function declarations
-void handleKeymap();
-void handleSet();
-void handleSave();
-void handleReset();
-void saveKeymapToEEPROM();
-void loadKeymapFromEEPROM();
-
-// Embedded HTML content
-const char* index_html = R"rawliteral(
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Modern Keyboard Shortcut Grid</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', sans-serif;
-    }
-
-    body {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: #f0f0f0;
-      min-height: 100vh;
-      padding: 40px 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .container {
-      max-width: 1200px;
-      width: 100%;
-      background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(12px);
-      border-radius: 24px;
-      padding: 40px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 
-                  0 0 0 1px rgba(255, 217, 0, 0.1);
-      border: 1px solid rgba(255, 217, 0, 0.15);
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 40px;
-      position: relative;
-    }
-
-    h1 {
-      font-size: 2.8rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      background: linear-gradient(to right, #ffd700, #ffb700);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 2px 10px rgba(255, 215, 0, 0.2);
-    }
-
-    .subtitle {
-      font-size: 1.1rem;
-      color: #94a3b8;
-      max-width: 600px;
-      margin: 0 auto;
-      line-height: 1.6;
-    }
-
-    .controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 20px;
-      margin-bottom: 40px;
-      flex-wrap: wrap;
-    }
-
-    .dropdown {
-      position: relative;
-      min-width: 200px;
-    }
-
-    select {
-      width: 100%;
-      padding: 14px 20px;
-      font-size: 16px;
-      border-radius: 14px;
-      border: none;
-      background: rgba(30, 41, 59, 0.8);
-      color: #e2e8f0;
-      appearance: none;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.2);
-      transition: all 0.3s ease;
-    }
-
-    select:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(255, 217, 0, 0.4), 
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.3);
-    }
-
-    select:hover {
-      background: rgba(41, 55, 80, 0.8);
-    }
-
-    .dropdown::after {
-      content: "▼";
-      position: absolute;
-      top: 50%;
-      right: 20px;
-      transform: translateY(-50%);
-      color: #ffd700;
-      pointer-events: none;
-      font-size: 12px;
-    }
-
-    .btn {
-      background: linear-gradient(to right, #ffd700, #ffb700);
-      color: #0f172a;
-      border: none;
-      padding: 14px 28px;
-      border-radius: 14px;
-      font-weight: 600;
-      font-size: 16px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3),
-                  0 0 0 1px rgba(255, 217, 0, 0.3);
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 7px 20px rgba(255, 215, 0, 0.4),
-                  0 0 0 1px rgba(255, 217, 0, 0.4);
-    }
-
-    .btn:active {
-      transform: translateY(1px);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 24px;
-      margin-bottom: 60px;
-    }
-
-    .key-box {
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
-      border-radius: 20px;
-      padding: 35px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.15);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      min-height: 180px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .key-box:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4),
-                  0 0 0 2px rgba(255, 217, 0, 0.25);
-    }
-
-    .key-box::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
-      opacity: 0;
-      transition: opacity 0.4s ease;
-    }
-
-    .key-box:hover::before {
-      opacity: 1;
-    }
-
-    .key-box .plus {
-      font-size: 3.5rem;
-      font-weight: 300;
-      color: #64748b;
-      transition: all 0.3s ease;
-    }
-
-    .key-box:hover .plus {
-      color: #ffd700;
-      transform: scale(1.2);
-    }
-
-    .key-box .shortcut-text {
-      font-size: 1.2rem;
-      color: #e2e8f0;
-      font-weight: 500;
-      margin-top: 15px;
-      min-height: 28px;
-    }
-
-    .key-box .hint {
-      position: absolute;
-      bottom: 15px;
-      font-size: 0.85rem;
-      color: #94a3b8;
-    }
-
-    .keyboard-illustration {
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
-      border-radius: 20px;
-      padding: 30px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.15);
-    }
-
-    .keyboard-illustration h2 {
-      text-align: center;
-      margin-bottom: 30px;
-      font-size: 1.8rem;
-      font-weight: 600;
-      color: #e2e8f0;
-      position: relative;
-      display: inline-block;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .keyboard-illustration h2::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 10%;
-      width: 80%;
-      height: 3px;
-      background: linear-gradient(to right, transparent, #ffd700, transparent);
-      border-radius: 50%;
-    }
-
-    .keyboard-row {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .key-display {
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
-      margin: 6px;
-      padding: 15px 20px;
-      border-radius: 12px;
-      font-size: 16px;
-      min-width: 50px;
-      text-align: center;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2),
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.1);
-      transition: all 0.2s ease;
-      font-weight: 500;
-      color: #cbd5e1;
-    }
-
-    .key-display:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3),
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.25);
-      background: linear-gradient(145deg, rgba(41, 55, 80, 0.9), rgba(30, 41, 59, 0.9));
-      color: #ffd700;
-    }
-
-    .key-display.pressed {
-      background: linear-gradient(145deg, rgba(255, 215, 0, 0.2), rgba(255, 183, 0, 0.2));
-      color: #ffd700;
-      font-weight: 600;
-      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3),
-                  inset 0 0 0 1px rgba(255, 217, 0, 0.4),
-                  0 0 15px rgba(255, 215, 0, 0.3);
-      transform: translateY(-1px);
-    }
-
-    .key-display.space {
-      min-width: 250px;
-    }
-
-    .keyboard-keys {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-
-    .action-bar {
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      margin-top: 30px;
-      flex-wrap: wrap;
-    }
-
-    .action-btn {
-      background: rgba(30, 41, 59, 0.8);
-      color: #e2e8f0;
-      border: 1px solid rgba(255, 217, 0, 0.2);
-      padding: 12px 24px;
-      border-radius: 12px;
-      font-weight: 500;
-      font-size: 15px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .action-btn:hover {
-      background: rgba(41, 55, 80, 0.8);
-      border-color: rgba(255, 217, 0, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    .action-btn.primary {
-      background: linear-gradient(to right, rgba(255, 215, 0, 0.9), rgba(255, 183, 0, 0.9));
-      color: #0f172a;
-      font-weight: 600;
-    }
-
-    .action-btn.primary:hover {
-      background: linear-gradient(to right, rgba(255, 215, 0, 1), rgba(255, 183, 0, 1));
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        padding: 30px 20px;
-      }
-      
-      h1 {
-        font-size: 2.2rem;
-      }
-      
-      .grid {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      }
-      
-      .key-display {
-        padding: 12px 15px;
-        min-width: 40px;
-        font-size: 14px;
-      }
-      
-      .key-display.space {
-        min-width: 180px;
+void saveMappingsToEEPROM() {
+  int addr = 0;
+  for (int i = 0; i < MAPPING_COUNT; i++) {
+    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+      String key = keyMappings[i][j];
+      byte len = key.length();
+      EEPROM.write(addr++, len);
+      for (int k = 0; k < len; k++) {
+        EEPROM.write(addr++, key[k]);
       }
     }
+  }
+  EEPROM.commit();
+  Serial.println("Saved to EEPROM");
+}
 
-    @media (max-width: 480px) {
-      h1 {
-        font-size: 1.8rem;
+void loadMappingsFromEEPROM() {
+  int addr = 0;
+  for (int i = 0; i < MAPPING_COUNT; i++) {
+    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+      byte len = EEPROM.read(addr++);
+      String key = "";
+      for (int k = 0; k < len; k++) {
+        key += (char)EEPROM.read(addr++);
       }
-      
-      .key-box {
-        padding: 25px 15px;
-        min-height: 150px;
-      }
-      
-      .controls {
-        flex-direction: column;
-      }
-      
-      .dropdown {
-        width: 100%;
+      keyMappings[i][j] = key;
+    }
+  }
+  Serial.println("Loaded from EEPROM");
+}
+
+void handleSave() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "text/plain", "Body not found");
+    return;
+  }
+
+  StaticJsonDocument<1024> doc;
+  DeserializationError err = deserializeJson(doc, server.arg("plain"));
+
+  if (err) {
+    server.send(400, "text/plain", "Invalid JSON");
+    return;
+  }
+
+  if (!doc.is<JsonArray>() || doc.size() != MAPPING_COUNT) {
+    server.send(400, "text/plain", "Expected 9 mappings");
+    return;
+  }
+
+  for (int i = 0; i < MAPPING_COUNT; i++) {
+    JsonArray inner = doc[i];
+    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+      keyMappings[i][j] = (j < inner.size()) ? String((const char*)inner[j]) : "";
+    }
+  }
+
+  saveMappingsToEEPROM();
+  server.send(200, "text/plain", "Saved");
+}
+
+void handleGet() {
+  StaticJsonDocument<1024> doc;
+  for (int i = 0; i < MAPPING_COUNT; i++) {
+    JsonArray mapping = doc.createNestedArray();
+    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+      if (keyMappings[i][j].length() > 0) {
+        mapping.add(keyMappings[i][j]);
       }
     }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1>Keyboard Shortcut Manager</h1>
-      <p class="subtitle">Customize and visualize your keyboard shortcuts with our modern interface. Assign shortcuts to actions and see them displayed on the interactive keyboard.</p>
-    </header>
+  }
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
 
-    <div class="controls">
-      <div class="dropdown">
-        <select id="osSelect">
-          <option value="mac">macOS</option>
-          <option value="windows">Windows</option>
-        </select>
-      </div>
-      
-      <button class="btn" id="saveBtn">
-        <i class="fas fa-save"></i> Save Configuration
-      </button>
-      
-      <button class="btn" id="resetBtn">
-        <i class="fas fa-redo"></i> Reset to Defaults
-      </button>
-    </div>
+void pressMappedKeys(int index) {
+  if (!bleKeyboard.isConnected()) return;
 
-    <div class="grid" id="shortcutGrid">
-      <!-- Shortcut boxes -->
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-      <div class="key-box" onclick="assignShortcut(this)">
-        <div class="plus">+</div>
-        <div class="shortcut-text"></div>
-        <div class="hint">Click to assign</div>
-      </div>
-    </div>
+  for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+    String key = keyMappings[index][j];
+    if (key == "") continue;
 
-    <div class="keyboard-illustration">
-      <h2>Interactive Keyboard Layout</h2>
-      <div class="keyboard-keys" id="keyboardKeys"></div>
-    </div>
+    if (key == "KEY_LEFT_GUI") bleKeyboard.press(KEY_LEFT_GUI);
+    else if (key == "KEY_LEFT_SHIFT") bleKeyboard.press(KEY_LEFT_SHIFT);
+    else if (key == "KEY_LEFT_CTRL") bleKeyboard.press(KEY_LEFT_CTRL);
+    else if (key == "KEY_LEFT_ALT") bleKeyboard.press(KEY_LEFT_ALT);
+    else if (key.length() == 1) bleKeyboard.press(key[0]);
+  }
 
-    <div class="action-bar">
-      <button class="action-btn">
-        <i class="fas fa-download"></i> Export Profile
-      </button>
-      <button class="action-btn">
-        <i class="fas fa-upload"></i> Import Profile
-      </button>
-      <button class="action-btn primary">
-        <i class="fas fa-keyboard"></i> Apply Shortcuts
-      </button>
-    </div>
-  </div>
-
-  <script>
-    (function () {
-      const macKeys = [
-        "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
-        "`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Delete",
-        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\",
-        "Caps", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter",
-        "Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift",
-        "Control", "Option", "Command", { text: "Space", cls: "space" }, "Command", "Option", "←", "↑", "↓", "→"
-      ];
-
-      const winKeys = [
-        "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
-        "`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Backspace",
-        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\",
-        "Caps Lock", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter",
-        "Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift",
-        "Ctrl", "Win", "Alt", { text: "Space", cls: "space" }, "Alt", "Win", "Menu", "←", "↑", "↓", "→"
-      ];
-      
-      const keyboardKeysDiv = document.getElementById("keyboardKeys");
-      const osSelect = document.getElementById("osSelect");
-      const saveBtn = document.getElementById("saveBtn");
-      const resetBtn = document.getElementById("resetBtn");
-      
-      // Predefined actions for shortcut boxes
-      const actions = [
-        "New Document",
-        "Save File",
-        "Copy Selection",
-        "Paste Content",
-        "Undo Action",
-        "Find Text",
-        "Toggle Fullscreen",
-        "Print Document",
-        "Refresh Page"
-      ];
-      
-      // Initialize action labels
-      document.querySelectorAll('.key-box').forEach((box, index) => {
-        if (actions[index]) {
-          box.querySelector('.shortcut-text').textContent = actions[index];
-        }
-      });
-
-      function updateKeyboardLayout() {
-        const os = osSelect.value;
-        const keys = os === "mac" ? macKeys : winKeys;
-
-        let rowHtml = '';
-        keys.forEach((key, i) => {
-          if (i % 14 === 0) rowHtml += '<div class="keyboard-row">';
-          
-          if (typeof key === 'object') {
-            rowHtml += `<span class="key-display ${key.cls || ''}">${key.text}</span>`;
-          } else {
-            rowHtml += `<span class="key-display">${key}</span>`;
-          }
-          
-          if ((i + 1) % 14 === 0 || i === keys.length - 1) rowHtml += '</div>';
-        });
-
-        keyboardKeysDiv.innerHTML = rowHtml;
-      }
-
-      window.assignShortcut = function (box) {
-        const os = osSelect.value;
-        const modifier = os === "mac" ? "Cmd" : "Ctrl";
-        const key = prompt(`Enter shortcut keys for "${box.querySelector('.shortcut-text').textContent}" (e.g., ${modifier} + Shift + F):`);
-        
-        if (key) {
-          box.querySelector('.shortcut-text').textContent = key;
-          box.querySelector('.plus').style.display = 'none';
-          box.querySelector('.hint').textContent = "Click to edit";
-          
-          // Add a subtle glow effect
-          box.style.boxShadow = "0 8px 30px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 217, 0, 0.3), 0 0 20px rgba(255, 215, 0, 0.2)";
-          
-          // Remove glow after animation
-          setTimeout(() => {
-            box.style.boxShadow = "0 8px 30px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 217, 0, 0.15)";
-          }, 1500);
-        }
-      }
-      
-      saveBtn.addEventListener("click", function() {
-        alert("Shortcut configuration saved successfully!");
-      });
-      
-      resetBtn.addEventListener("click", function() {
-        if (confirm("Are you sure you want to reset all shortcuts to default?")) {
-          document.querySelectorAll('.key-box').forEach((box, index) => {
-            box.querySelector('.shortcut-text').textContent = actions[index] || '';
-            box.querySelector('.plus').style.display = 'block';
-            box.querySelector('.hint').textContent = "Click to assign";
-          });
-          alert("All shortcuts have been reset to default!");
-        }
-      });
-
-      osSelect.addEventListener("change", updateKeyboardLayout);
-
-      // Key mapping for different OS
-      const keyMappings = {
-        mac: {
-          'Escape': 'Esc',
-          'Backspace': 'Delete',
-          'CapsLock': 'Caps',
-          'Meta': 'Command',
-          'Alt': 'Option',
-          'Control': 'Control',
-          'Shift': 'Shift',
-          'Enter': 'Enter',
-          'Tab': 'Tab',
-          ' ': 'Space',
-          'ArrowLeft': '←',
-          'ArrowUp': '↑',
-          'ArrowDown': '↓',
-          'ArrowRight': '→'
-        },
-        windows: {
-          'Escape': 'Esc',
-          'Backspace': 'Backspace',
-          'CapsLock': 'Caps Lock',
-          'Meta': 'Win',
-          'Alt': 'Alt',
-          'Control': 'Ctrl',
-          'Shift': 'Shift',
-          'Enter': 'Enter',
-          'Tab': 'Tab',
-          ' ': 'Space',
-          'ArrowLeft': '←',
-          'ArrowUp': '↑',
-          'ArrowDown': '↓',
-          'ArrowRight': '→',
-          'ContextMenu': 'Menu'
-        }
-      };
-
-      // Track pressed keys
-      const pressedKeys = new Set();
-
-      // Function to highlight pressed keys
-      function highlightPressedKey(key, isPressed) {
-        const os = osSelect.value;
-        const keyMapping = keyMappings[os];
-        const mappedKey = keyMapping[key] || key;
-        
-        const keyElements = document.querySelectorAll('.key-display');
-        keyElements.forEach(element => {
-          if (element.textContent === mappedKey) {
-            if (isPressed) {
-              element.classList.add('pressed');
-              pressedKeys.add(mappedKey);
-            } else {
-              element.classList.remove('pressed');
-              pressedKeys.delete(mappedKey);
-            }
-          }
-        });
-      }
-
-      // Handle keydown events
-      document.addEventListener('keydown', function(event) {
-        event.preventDefault();
-        highlightPressedKey(event.key, true);
-      });
-
-      // Handle keyup events
-      document.addEventListener('keyup', function(event) {
-        event.preventDefault();
-        highlightPressedKey(event.key, false);
-      });
-
-      // Handle window blur to clear all pressed keys
-      window.addEventListener('blur', function() {
-        pressedKeys.forEach(key => {
-          highlightPressedKey(key, false);
-        });
-        pressedKeys.clear();
-      });
-
-      // Initial render
-      updateKeyboardLayout();
-    })();
-  </script>
-</body>
-</html>
-)rawliteral";
+  delay(10);
+  bleKeyboard.releaseAll();
+}
 
 void setup() {
   Serial.begin(115200);
-  
-  // Initialize EEPROM
   EEPROM.begin(EEPROM_SIZE);
-  loadKeymapFromEEPROM();
-  
-  // Start WiFi AP
+
+  BLESecurity *pSecurity = new BLESecurity();
+  pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
+  pSecurity->setCapability(ESP_IO_CAP_NONE);
+  pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+
+  bleKeyboard.begin();
+  loadMappingsFromEEPROM();
+
+  for (byte r = 0; r < numRows; r++) {
+    pinMode(rowPins[r], OUTPUT);
+    digitalWrite(rowPins[r], HIGH);
+  }
+  for (byte c = 0; c < numCols; c++) {
+    pinMode(colPins[c], INPUT_PULLUP);
+  }
+
   WiFi.softAP(ssid, password);
-  Serial.print("AP IP address: ");
+  Serial.print("AP IP Address: ");
   Serial.println(WiFi.softAPIP());
 
-  // Set up server routes
-  server.on("/", HTTP_GET, []() {
-    server.send(200, "text/html", index_html);
-  });
-  
-  // API handlers
-  server.on("/keymap", HTTP_GET, handleKeymap);
-  server.on("/set", HTTP_GET, handleSet);
-  server.on("/save", HTTP_GET, handleSave);
-  server.on("/reset", HTTP_GET, handleReset);
-  
+  server.on("/save", HTTP_POST, handleSave);
+  server.on("/getkeymapping", HTTP_GET, handleGet);
   server.begin();
-  Serial.println("Web server started");
+  Serial.println("HTTP Server started");
 }
 
 void loop() {
   server.handleClient();
-}
+  unsigned long now = millis();
 
-void handleKeymap() {
-  String json = "[";
-  for (int r = 0; r < 3; r++) {
-    json += "[";
-    for (int c = 0; c < 3; c++) {
-      json += "\"" + keymap[r][c] + "\"";
-      if (c < 2) json += ",";
-    }
-    json += "]";
-    if (r < 2) json += ",";
-  }
-  json += "]";
-  server.send(200, "application/json", json);
-}
-
-void handleSet() {
-  if (server.hasArg("row") && server.hasArg("col") && server.hasArg("val")) {
-    int r = server.arg("row").toInt();
-    int c = server.arg("col").toInt();
-    String val = server.arg("val");
-    
-    if (r >= 0 && r < 3 && c >= 0 && c < 3) {
-      keymap[r][c] = val;
-      Serial.printf("Mapped (%d,%d) to '%s'\n", r, c, val.c_str());
-      server.send(200, "text/plain", "OK");
-      return;
-    }
-  }
-  server.send(400, "text/plain", "Invalid parameters");
-}
-
-void handleSave() {
-  saveKeymapToEEPROM();
-  server.send(200, "text/plain", "Configuration saved to EEPROM");
-}
-
-void handleReset() {
-  String defaultMap[3][3] = {
-    {"Ctrl+C", "Ctrl+V", "Ctrl+X"},
-    {"Alt+Tab", "Cmd+A", "Shift+Cmd+4"},
-    {"Win+L", "Ctrl+Alt+Del", "Alt+F4"}
-  };
-  
-  for (int r = 0; r < 3; r++) {
-    for (int c = 0; c < 3; c++) {
-      keymap[r][c] = defaultMap[r][c];
-    }
-  }
-  saveKeymapToEEPROM();
-  server.send(200, "text/plain", "Keymap reset to defaults");
-}
-
-void saveKeymapToEEPROM() {
-  int addr = KEYMAP_START_ADDR;
-  
-  // Write signature to verify data integrity
-  EEPROM.write(0, EEPROM_SIGNATURE >> 8);
-  EEPROM.write(1, EEPROM_SIGNATURE & 0xFF);
-  
-  for (int r = 0; r < 3; r++) {
-    for (int c = 0; c < 3; c++) {
-      String key = keymap[r][c];
-      // Write string length
-      EEPROM.write(addr++, key.length());
-      
-      // Write each character
-      for (int i = 0; i < key.length(); i++) {
-        EEPROM.write(addr++, key.charAt(i));
+  for (byte r = 0; r < numRows; r++) {
+    digitalWrite(rowPins[r], LOW);
+    for (byte c = 0; c < numCols; c++) {
+      if (digitalRead(colPins[c]) == LOW && (now - lastPressTime[r][c] > debounceDelay)) {
+        int keyIndex = r * numCols + c;
+        Serial.print("Pressed key index: ");
+        Serial.println(keyIndex);
+        pressMappedKeys(keyIndex);
+        lastPressTime[r][c] = now;
       }
     }
+    digitalWrite(rowPins[r], HIGH);
   }
-  
-  EEPROM.commit();
-  Serial.println("Keymap saved to EEPROM");
-}
-
-void loadKeymapFromEEPROM() {
-  // Verify signature
-  uint16_t signature = (EEPROM.read(0) << 8) | EEPROM.read(1);
-  if (signature != EEPROM_SIGNATURE) {
-    Serial.println("No valid EEPROM data. Using default keymap.");
-    return;
-  }
-  
-  int addr = KEYMAP_START_ADDR;
-  
-  for (int r = 0; r < 3; r++) {
-    for (int c = 0; c < 3; c++) {
-      // Read string length
-      int len = EEPROM.read(addr++);
-      if (len == 0 || len > 50) {
-        addr += len; // Skip invalid entry
-        continue;
-      }
-      
-      // Read string characters
-      String key = "";
-      for (int i = 0; i < len; i++) {
-        key += (char)EEPROM.read(addr++);
-      }
-      
-      keymap[r][c] = key;
-      Serial.printf("Loaded (%d,%d): %s\n", r, c, key.c_str());
-    }
-  }
+  delay(10);
 }
