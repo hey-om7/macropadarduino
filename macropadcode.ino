@@ -12,10 +12,17 @@
 #define VERSION_EEPROM_ADDR 850    // reserve 40 bytes max
 #define WIFI_EEPROM_ADDR 900       // SSID at 900, password at 940
 
-BleKeyboard bleKeyboard("DLS_MPAD2", "Domestic Labs", 100);
+BleKeyboard bleKeyboard("DLS_MPAD", "Domestic Labs", 100);
 
 const char* fallbackSSID = "DLS_MPAD";
 const char* fallbackPassword = "12345678";
+
+// GPIO pin for the buzzer
+const int buzzerPin = 7;
+
+// Frequencies for simple beep pattern
+int frequencies[] = { 1000, 1500, 2000 }; // in Hz
+int duration = 200; // milliseconds
 
 WebServer server(80);
 String keyMappings[MAPPING_COUNT][MAX_KEYS_PER_MAPPING];
@@ -277,9 +284,35 @@ void pressMappedKeys(int index) {
   bleKeyboard.releaseAll();
 }
 
+
+void playPowerOnTone() {
+  int toneSequence[] = { 800, 1000, 1200, 1400 }; // Increasing pitch
+  int toneDuration = 120;  // duration of each tone (ms)
+  int gap = 30;            // short gap between tones
+
+  for (int i = 0; i < sizeof(toneSequence) / sizeof(toneSequence[0]); i++) {
+    tone(buzzerPin, toneSequence[i]);
+    delay(toneDuration);
+    noTone(buzzerPin);
+    delay(gap);
+  }
+}
+void playTone_SharpBlips() {
+  int tones[] = { 1000, 1500, 1000, 1800 };
+  for (int i = 0; i < 4; i++) {
+    tone(buzzerPin, tones[i]);
+    delay(80);
+    noTone(buzzerPin);
+    delay(50);
+  }
+}
+
 // ---------- Setup ----------
 void setup() {
   Serial.begin(115200);
+  pinMode(buzzerPin, OUTPUT);
+  playPowerOnTone();
+  delay(1000); 
   EEPROM.begin(EEPROM_SIZE);
   bleKeyboard.begin();
   loadMappingsFromEEPROM();
@@ -311,6 +344,8 @@ void setup() {
   }
 }
 
+
+
 // ---------- Loop ----------
 void loop() {
   server.handleClient();
@@ -328,6 +363,7 @@ void loop() {
             keyHeld = true;
           } else if ((now - keyPressStartTime >= 10000) && !serverStarted) {
             Serial.println("10s key hold detected. Starting hotspot and server.");
+            playTone_SharpBlips();
             startHotspotAndServer();
             serverStarted = true;
           }
