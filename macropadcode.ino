@@ -3,23 +3,23 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <BleKeyboard.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
 
 #define EEPROM_SIZE 1024
 #define MAPPING_COUNT 9
 #define MAX_KEYS_PER_MAPPING 3
-#define MAX_KEY_NAME_LEN 16
+#define VERSION_EEPROM_ADDR 850    // reserve 40 bytes max
+#define WIFI_EEPROM_ADDR 900       // SSID at 900, password at 940
 
-// BLE Keyboard instance
-BleKeyboard bleKeyboard("DLS_MPAD", "Domestic Labs", 100);
+BleKeyboard bleKeyboard("DLS_MPAD2", "Domestic Labs", 100);
 
-// WiFi credentials (AP Mode)
-const char* ssid = "DLS_MPAD";
-const char* password = "12345678";
+const char* fallbackSSID = "DLS_MPAD";
+const char* fallbackPassword = "12345678";
 
 WebServer server(80);
 String keyMappings[MAPPING_COUNT][MAX_KEYS_PER_MAPPING];
 
-// Matrix keypad setup
 const byte numRows = 3;
 const byte numCols = 3;
 byte rowPins[numRows] = {6, 1, 2};
@@ -27,54 +27,156 @@ byte colPins[numCols] = {3, 4, 5};
 unsigned long lastPressTime[numRows][numCols] = {0};
 const unsigned long debounceDelay = 300;
 
-void saveMappingsToEEPROM() {
-  int addr = 0;
-  for (int i = 0; i < MAPPING_COUNT; i++) {
-    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
-      String key = keyMappings[i][j];
-      byte len = key.length();
-      EEPROM.write(addr++, len);
-      for (int k = 0; k < len; k++) {
-        EEPROM.write(addr++, key[k]);
-      }
-    }
+String savedSSID = "";
+String savedPassword = "";
+
+bool serverStarted = false;
+bool keyHeld = false;
+unsigned long keyPressStartTime = 0;
+
+const char* ipServer = "13.201.164.232";
+
+String firmwareBinUrl;
+String versionCheckUrl;
+String CURRENT_VERSION;
+
+// ---------- EEPROM ----------
+void writeStringToEEPROM(int addr, const String &data) {
+  byte len = data.length();
+  EEPROM.write(addr++, len);
+  for (byte i = 0; i < len; i++) {
+    EEPROM.write(addr++, data[i]);
   }
+}
+
+String readStringFromEEPROM(int addr) {
+  byte len = EEPROM.read(addr++);
+  String value = "";
+  for (byte i = 0; i < len; i++) {
+    value += (char)EEPROM.read(addr++);
+  }
+  return value;
+}
+
+void saveWiFiCredentials(const String &ssid, const String &password) {
+  writeStringToEEPROM(WIFI_EEPROM_ADDR, ssid);
+  writeStringToEEPROM(WIFI_EEPROM_ADDR + 32, password);
   EEPROM.commit();
-  Serial.println("Saved to EEPROM");
 }
 
-void loadMappingsFromEEPROM() {
-  int addr = 0;
-  for (int i = 0; i < MAPPING_COUNT; i++) {
-    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
-      byte len = EEPROM.read(addr++);
-      String key = "";
-      for (int k = 0; k < len; k++) {
-        key += (char)EEPROM.read(addr++);
+void loadWiFiCredentials() {
+  savedSSID = readStringFromEEPROM(WIFI_EEPROM_ADDR);
+  savedPassword = readStringFromEEPROM(WIFI_EEPROM_ADDR + 32);
+}
+
+void saveVersionToEEPROM(const String &version) {
+  writeStringToEEPROM(VERSION_EEPROM_ADDR, version);
+  EEPROM.commit();
+}
+
+void loadVersionFromEEPROM() {
+  // VERSION_EEPROM_ADDR = 850, 40 bytes reserved
+  CURRENT_VERSION = readStringFromEEPROM(VERSION_EEPROM_ADDR);
+  if (CURRENT_VERSION.length() == 0 || CURRENT_VERSION.length() > 20) {
+    CURRENT_VERSION = "0.0.0";  // default if not stored yet
+  }
+}
+
+// ---------- Version Comparison ----------
+bool isVersionNewer(String current, String latest) {
+  int currentMajor, currentMinor, currentPatch;
+  int latestMajor, latestMinor, latestPatch;
+
+  sscanf(current.c_str(), "%d.%d.%d", &currentMajor, &currentMinor, &currentPatch);
+  sscanf(latest.c_str(), "%d.%d.%d", &latestMajor, &latestMinor, &latestPatch);
+
+  if (latestMajor > currentMajor) return true;
+  if (latestMajor == currentMajor && latestMinor > currentMinor) return true;
+  if (latestMajor == currentMajor && latestMinor == currentMinor && latestPatch > currentPatch) return true;
+
+  return false;
+}
+
+// ---------- OTA Check ----------
+void checkForOTAUpdate() {
+  WiFiClient client;
+  HTTPClient http;
+
+  Serial.println("Checking for latest firmware version...");
+  http.begin(client, versionCheckUrl);
+
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String payload = http.getString();
+    int dataIndex = payload.indexOf("\"data\":\"");
+    if (dataIndex != -1) {
+      int start = dataIndex + 8;
+      int end = payload.indexOf("\"", start);
+      String latestVersion = payload.substring(start, end);
+      bool canUpdate = isVersionNewer(CURRENT_VERSION, latestVersion);
+      Serial.println("Current: " + CURRENT_VERSION + ", Latest: " + latestVersion);
+      if (canUpdate) {
+        Serial.println("Firmware update available. Starting OTA...");
+        httpUpdate.rebootOnUpdate(false);
+        t_httpUpdate_return result = httpUpdate.update(client, firmwareBinUrl);
+
+        switch (result) {
+          case HTTP_UPDATE_FAILED:
+            Serial.printf("Update failed: %s\n", httpUpdate.getLastErrorString().c_str());
+            break;
+          case HTTP_UPDATE_NO_UPDATES:
+            Serial.println("No update available.");
+            break;
+          case HTTP_UPDATE_OK:
+            saveVersionToEEPROM(latestVersion);
+            Serial.println("Update successful. Rebooting...");
+            delay(500);
+            ESP.restart();
+            break;
+        }
+      } else {
+        Serial.println("Firmware is already up to date.");
       }
-      keyMappings[i][j] = key;
+    } else {
+      Serial.println("Version parsing failed.");
     }
+  } else {
+    Serial.printf("Version check failed. HTTP code: %d\n", httpCode);
   }
-  Serial.println("Loaded from EEPROM");
+
+  http.end();
 }
 
-void handleSave() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "text/plain", "Body not found");
-    return;
+// ---------- WiFi ----------
+bool connectToSavedWiFi() {
+  if (savedSSID.isEmpty() || savedPassword.isEmpty()) return false;
+
+  WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
+
+  for (int i = 0; i < 10; i++) {
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("Connected to saved WiFi.");
+      Serial.println(WiFi.localIP());
+      return true;
+    }
+    delay(1000);
+    Serial.print(".");
   }
+
+  Serial.println("Failed to connect to saved WiFi.");
+  return false;
+}
+
+// ---------- Web Server ----------
+void handleSave() {
+  if (!server.hasArg("plain")) return server.send(400, "text/plain", "Body not found");
 
   StaticJsonDocument<1024> doc;
   DeserializationError err = deserializeJson(doc, server.arg("plain"));
-
-  if (err) {
-    server.send(400, "text/plain", "Invalid JSON");
-    return;
-  }
+  if (err) return server.send(400, "text/plain", "Invalid JSON");
 
   if (!doc.is<JsonArray>() || doc.size() != MAPPING_COUNT) {
-    server.send(400, "text/plain", "Expected 9 mappings");
-    return;
+    return server.send(400, "text/plain", "Expected 9 mappings");
   }
 
   for (int i = 0; i < MAPPING_COUNT; i++) {
@@ -93,9 +195,7 @@ void handleGet() {
   for (int i = 0; i < MAPPING_COUNT; i++) {
     JsonArray mapping = doc.createNestedArray();
     for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
-      if (keyMappings[i][j].length() > 0) {
-        mapping.add(keyMappings[i][j]);
-      }
+      if (keyMappings[i][j].length() > 0) mapping.add(keyMappings[i][j]);
     }
   }
   String response;
@@ -103,35 +203,100 @@ void handleGet() {
   server.send(200, "application/json", response);
 }
 
+void handleWiFiSave() {
+  if (!server.hasArg("plain")) return server.send(400, "text/plain", "No JSON");
+
+  StaticJsonDocument<256> doc;
+  DeserializationError err = deserializeJson(doc, server.arg("plain"));
+  if (err) return server.send(400, "text/plain", "Invalid JSON");
+
+  String ssid = doc["ssid"];
+  String password = doc["password"];
+
+  if (ssid == "" || password == "") return server.send(400, "text/plain", "Missing ssid/password");
+
+  saveWiFiCredentials(ssid, password);
+  server.send(200, "text/plain", "WiFi credentials saved");
+
+  WiFi.begin(ssid.c_str(), password.c_str());
+}
+
+void startHotspotAndServer() {
+  WiFi.softAP(fallbackSSID, fallbackPassword);
+  Serial.println("AP IP: " + WiFi.softAPIP().toString());
+
+  server.on("/save", HTTP_POST, handleSave);
+  server.on("/getkeymapping", HTTP_GET, handleGet);
+  server.on("/wifi", HTTP_POST, handleWiFiSave);
+  server.begin();
+  Serial.println("HTTP Server started");
+}
+
+// ---------- Key Mapping ----------
+void saveMappingsToEEPROM() {
+  int addr = 0;
+  for (int i = 0; i < MAPPING_COUNT; i++) {
+    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+      String key = keyMappings[i][j];
+      byte len = key.length();
+      EEPROM.write(addr++, len);
+      for (int k = 0; k < len; k++) {
+        EEPROM.write(addr++, key[k]);
+      }
+    }
+  }
+  EEPROM.commit();
+}
+
+void loadMappingsFromEEPROM() {
+  int addr = 0;
+  for (int i = 0; i < MAPPING_COUNT; i++) {
+    for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
+      byte len = EEPROM.read(addr++);
+      String key = "";
+      for (int k = 0; k < len; k++) {
+        key += (char)EEPROM.read(addr++);
+      }
+      keyMappings[i][j] = key;
+    }
+  }
+}
+
 void pressMappedKeys(int index) {
   if (!bleKeyboard.isConnected()) return;
-
   for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
     String key = keyMappings[index][j];
     if (key == "") continue;
-
     if (key == "KEY_LEFT_GUI") bleKeyboard.press(KEY_LEFT_GUI);
     else if (key == "KEY_LEFT_SHIFT") bleKeyboard.press(KEY_LEFT_SHIFT);
     else if (key == "KEY_LEFT_CTRL") bleKeyboard.press(KEY_LEFT_CTRL);
     else if (key == "KEY_LEFT_ALT") bleKeyboard.press(KEY_LEFT_ALT);
     else if (key.length() == 1) bleKeyboard.press(key[0]);
   }
-
   delay(10);
   bleKeyboard.releaseAll();
 }
 
+// ---------- Setup ----------
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
+  bleKeyboard.begin();
+  loadMappingsFromEEPROM();
+  loadWiFiCredentials();
+  loadVersionFromEEPROM();
 
+  WiFi.mode(WIFI_STA);
+
+  String macAddress = WiFi.macAddress();
+  firmwareBinUrl = "http://" + String(ipServer) + ":8080/api/v1/device/firmware?macAddress=" + macAddress;
+  versionCheckUrl = "http://" + String(ipServer) + ":8080/api/v1/device/firmware/version?macAddress=" + macAddress;
+  Serial.println("Mac address: " + macAddress);
+  
   BLESecurity *pSecurity = new BLESecurity();
   pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
   pSecurity->setCapability(ESP_IO_CAP_NONE);
   pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-
-  bleKeyboard.begin();
-  loadMappingsFromEEPROM();
 
   for (byte r = 0; r < numRows; r++) {
     pinMode(rowPins[r], OUTPUT);
@@ -141,16 +306,12 @@ void setup() {
     pinMode(colPins[c], INPUT_PULLUP);
   }
 
-  WiFi.softAP(ssid, password);
-  Serial.print("AP IP Address: ");
-  Serial.println(WiFi.softAPIP());
-
-  server.on("/save", HTTP_POST, handleSave);
-  server.on("/getkeymapping", HTTP_GET, handleGet);
-  server.begin();
-  Serial.println("HTTP Server started");
+  if (connectToSavedWiFi()) {
+    checkForOTAUpdate();
+  }
 }
 
+// ---------- Loop ----------
 void loop() {
   server.handleClient();
   unsigned long now = millis();
@@ -158,15 +319,33 @@ void loop() {
   for (byte r = 0; r < numRows; r++) {
     digitalWrite(rowPins[r], LOW);
     for (byte c = 0; c < numCols; c++) {
-      if (digitalRead(colPins[c]) == LOW && (now - lastPressTime[r][c] > debounceDelay)) {
-        int keyIndex = r * numCols + c;
-        Serial.print("Pressed key index: ");
-        Serial.println(keyIndex);
-        pressMappedKeys(keyIndex);
-        lastPressTime[r][c] = now;
+      bool keyPressed = (digitalRead(colPins[c]) == LOW);
+
+      if (r == 2 && c == 0) {
+        if (keyPressed) {
+          if (!keyHeld) {
+            keyPressStartTime = now;
+            keyHeld = true;
+          } else if ((now - keyPressStartTime >= 10000) && !serverStarted) {
+            Serial.println("10s key hold detected. Starting hotspot and server.");
+            startHotspotAndServer();
+            serverStarted = true;
+          }
+        } else {
+          keyHeld = false;
+        }
+      } else {
+        if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
+          int keyIndex = r * numCols + c;
+          Serial.print("Key Pressed Index: ");
+          Serial.println(keyIndex);
+          pressMappedKeys(keyIndex);
+          lastPressTime[r][c] = now;
+        }
       }
     }
     digitalWrite(rowPins[r], HIGH);
   }
+
   delay(10);
 }
