@@ -313,12 +313,13 @@ void playTone_LongLowBeep() {
   tone(buzzerPin, 400);
   delay(600);
   noTone(buzzerPin);
-  delay(50)
+  delay(50);
 }
 
 // ---------- Setup ----------
 void setup() {
   Serial.begin(115200);
+  randomSeed(analogRead(0));
   pinMode(buzzerPin, OUTPUT);
   playPowerOnTone();
   delay(1000);
@@ -353,7 +354,11 @@ void setup() {
   }
 }
 
-
+char generateRandomLetter(){
+  int randomNumber = random(1, 27);  // 1 to 26
+  char letter = 'a' + (randomNumber - 1); // Map 1→'a', 2→'b', ..., 26→'z'
+  return letter;
+}
 
 // ---------- Loop ----------
 void loop() {
@@ -382,11 +387,11 @@ void loop() {
           if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
             isWakeModeActive = !isWakeModeActive;  // Toggle mode
             if(isWakeModeActive){
-              playTone_LongLowBeep();
-            }
+                  playTone_LongLowBeep();
+                }
             Serial.println(isWakeModeActive ? "Auto-send 'a' ON" : "Auto-send 'a' OFF");
-            lastPressTime[r][c] = now;
-          }
+                lastPressTime[r][c] = now;
+            }
         } else {
         if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
           int keyIndex = r * numCols + c;
@@ -402,10 +407,11 @@ void loop() {
 
     if (isWakeModeActive && bleKeyboard.isConnected()) {
       if (millis() - lastKeySendTime >= 5000) {
-        bleKeyboard.press('a');
+        char randomLetter = generateRandomLetter();
+        bleKeyboard.press(randomLetter);
         delay(10);  // Small delay to simulate keypress
-        bleKeyboard.release('a');
-        Serial.println("Sent key: 'a'");
+        bleKeyboard.release(randomLetter);
+        Serial.println("Sent key: "+randomLetter);
         lastKeySendTime = millis();
       }
   }
