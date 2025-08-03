@@ -21,8 +21,8 @@ const char* fallbackPassword = "12345678";
 const int buzzerPin = 7;
 
 // Frequencies for simple beep pattern
-int frequencies[] = { 1000, 1500, 2000 }; // in Hz
-int duration = 200; // milliseconds
+// int frequencies[] = { 1000, 1500, 2000 }; // in Hz
+// int duration = 200; // milliseconds
 
 WebServer server(80);
 String keyMappings[MAPPING_COUNT][MAX_KEYS_PER_MAPPING];
@@ -40,9 +40,10 @@ String savedPassword = "";
 bool serverStarted = false;
 bool keyHeld = false;
 unsigned long keyPressStartTime = 0;
+bool isWakeModeActive = false;             // Toggle sending mode
+unsigned long lastKeySendTime = 0;         // Timer for sending 'a' every 5s
 
 const char* ipServer = "13.201.164.232";
-
 String firmwareBinUrl;
 String versionCheckUrl;
 String CURRENT_VERSION;
@@ -135,10 +136,10 @@ void checkForOTAUpdate() {
             Serial.println("No update available.");
             break;
           case HTTP_UPDATE_OK:
-            saveVersionToEEPROM(latestVersion);
-            Serial.println("Update successful. Rebooting...");
-            delay(500);
-            ESP.restart();
+          saveVersionToEEPROM(latestVersion);
+          Serial.println("Update successful. Rebooting...");
+          delay(500);
+          ESP.restart();
             break;
         }
       } else {
@@ -297,6 +298,7 @@ void playPowerOnTone() {
     delay(gap);
   }
 }
+
 void playTone_SharpBlips() {
   int tones[] = { 1000, 1500, 1000, 1800 };
   for (int i = 0; i < 4; i++) {
@@ -307,12 +309,19 @@ void playTone_SharpBlips() {
   }
 }
 
+void playTone_LongLowBeep() {
+  tone(buzzerPin, 400);
+  delay(600);
+  noTone(buzzerPin);
+  delay(50)
+}
+
 // ---------- Setup ----------
 void setup() {
   Serial.begin(115200);
   pinMode(buzzerPin, OUTPUT);
   playPowerOnTone();
-  delay(1000); 
+  delay(1000);
   EEPROM.begin(EEPROM_SIZE);
   bleKeyboard.begin();
   loadMappingsFromEEPROM();
@@ -325,7 +334,7 @@ void setup() {
   firmwareBinUrl = "http://" + String(ipServer) + ":8080/api/v1/device/firmware?macAddress=" + macAddress;
   versionCheckUrl = "http://" + String(ipServer) + ":8080/api/v1/device/firmware/version?macAddress=" + macAddress;
   Serial.println("Mac address: " + macAddress);
-  
+
   BLESecurity *pSecurity = new BLESecurity();
   pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
   pSecurity->setCapability(ESP_IO_CAP_NONE);
@@ -355,8 +364,7 @@ void loop() {
     digitalWrite(rowPins[r], LOW);
     for (byte c = 0; c < numCols; c++) {
       bool keyPressed = (digitalRead(colPins[c]) == LOW);
-
-      if (r == 2 && c == 0) {
+      if (r == 1 && c == 0) {
         if (keyPressed) {
           if (!keyHeld) {
             keyPressStartTime = now;
@@ -370,7 +378,16 @@ void loop() {
         } else {
           keyHeld = false;
         }
-      } else {
+      } else if (r == 2 && c == 0) {
+          if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
+            isWakeModeActive = !isWakeModeActive;  // Toggle mode
+            if(isWakeModeActive){
+              playTone_LongLowBeep();
+            }
+            Serial.println(isWakeModeActive ? "Auto-send 'a' ON" : "Auto-send 'a' OFF");
+            lastPressTime[r][c] = now;
+          }
+        } else {
         if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
           int keyIndex = r * numCols + c;
           Serial.print("Key Pressed Index: ");
@@ -381,6 +398,16 @@ void loop() {
       }
     }
     digitalWrite(rowPins[r], HIGH);
+  }
+
+    if (isWakeModeActive && bleKeyboard.isConnected()) {
+      if (millis() - lastKeySendTime >= 5000) {
+        bleKeyboard.press('a');
+        delay(10);  // Small delay to simulate keypress
+        bleKeyboard.release('a');
+        Serial.println("Sent key: 'a'");
+        lastKeySendTime = millis();
+      }
   }
 
   delay(10);
