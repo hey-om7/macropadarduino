@@ -472,6 +472,92 @@
 
   <script>
     (function () {
+      // Key mapping reference from keymapping.csv
+      const keyMappingReference = {
+        // Letters A-Z
+        'a': 'KEY_A', 'b': 'KEY_B', 'c': 'KEY_C', 'd': 'KEY_D', 'e': 'KEY_E',
+        'f': 'KEY_F', 'g': 'KEY_G', 'h': 'KEY_H', 'i': 'KEY_I', 'j': 'KEY_J',
+        'k': 'KEY_K', 'l': 'KEY_L', 'm': 'KEY_M', 'n': 'KEY_N', 'o': 'KEY_O',
+        'p': 'KEY_P', 'q': 'KEY_Q', 'r': 'KEY_R', 's': 'KEY_S', 't': 'KEY_T',
+        'u': 'KEY_U', 'v': 'KEY_V', 'w': 'KEY_W', 'x': 'KEY_X', 'y': 'KEY_Y', 'z': 'KEY_Z',
+        
+        // Digits 0-9
+        '0': 'KEY_0', '1': 'KEY_1', '2': 'KEY_2', '3': 'KEY_3', '4': 'KEY_4',
+        '5': 'KEY_5', '6': 'KEY_6', '7': 'KEY_7', '8': 'KEY_8', '9': 'KEY_9',
+        
+        // Special keys
+        'Enter': 'KEY_ENTER',
+        'Escape': 'KEY_ESC',
+        'Backspace': 'KEY_BACKSPACE',
+        'Tab': 'KEY_TAB',
+        ' ': 'KEY_SPACE',
+        'CapsLock': 'KEY_CAPS_LOCK',
+        
+        // Function keys
+        'F1': 'KEY_F1', 'F2': 'KEY_F2', 'F3': 'KEY_F3', 'F4': 'KEY_F4',
+        'F5': 'KEY_F5', 'F6': 'KEY_F6', 'F7': 'KEY_F7', 'F8': 'KEY_F8',
+        'F9': 'KEY_F9', 'F10': 'KEY_F10', 'F11': 'KEY_F11', 'F12': 'KEY_F12',
+        
+        // Navigation keys
+        'Insert': 'KEY_INSERT',
+        'Delete': 'KEY_DELETE',
+        'Home': 'KEY_HOME',
+        'End': 'KEY_END',
+        'PageUp': 'KEY_PAGE_UP',
+        'PageDown': 'KEY_PAGE_DOWN',
+        
+        // Arrow keys
+        'ArrowUp': 'KEY_UP_ARROW',
+        'ArrowDown': 'KEY_DOWN_ARROW',
+        'ArrowLeft': 'KEY_LEFT_ARROW',
+        'ArrowRight': 'KEY_RIGHT_ARROW',
+        
+        // Modifier keys
+        'Control': 'KEY_LEFT_CTRL',
+        'Shift': 'KEY_LEFT_SHIFT',
+        'Alt': 'KEY_LEFT_ALT',
+        'Meta': 'KEY_LEFT_GUI',
+        
+        // Media keys
+        'MediaPlayPause': 'KEY_MEDIA_PLAY_PAUSE',
+        'MediaVolumeUp': 'KEY_MEDIA_VOLUME_UP',
+        'MediaVolumeDown': 'KEY_MEDIA_VOLUME_DOWN',
+        'MediaMute': 'KEY_MEDIA_MUTE'
+      };
+
+      // Enhanced key mapping for better detection
+      const enhancedKeyMapping = {
+        // Modifier keys with multiple possible names
+        'ctrl': 'KEY_LEFT_CTRL',
+        'control': 'KEY_LEFT_CTRL',
+        'shift': 'KEY_LEFT_SHIFT',
+        'alt': 'KEY_LEFT_ALT',
+        'option': 'KEY_LEFT_ALT',
+        'meta': 'KEY_LEFT_GUI',
+        'cmd': 'KEY_LEFT_GUI',
+        'command': 'KEY_LEFT_GUI',
+        'win': 'KEY_LEFT_GUI',
+        'windows': 'KEY_LEFT_GUI',
+        
+        // Special characters
+        '`': 'KEY_BACKTICK',
+        '-': 'KEY_MINUS',
+        '=': 'KEY_EQUALS',
+        '[': 'KEY_LEFT_BRACKET',
+        ']': 'KEY_RIGHT_BRACKET',
+        '\\': 'KEY_BACKSLASH',
+        ';': 'KEY_SEMICOLON',
+        "'": 'KEY_QUOTE',
+        ',': 'KEY_COMMA',
+        '.': 'KEY_PERIOD',
+        '/': 'KEY_SLASH',
+        
+        // Additional function keys
+        'printscreen': 'KEY_PRINT_SCREEN',
+        'scrolllock': 'KEY_SCROLL_LOCK',
+        'pausebreak': 'KEY_PAUSE_BREAK'
+      };
+
       const macKeys = [
         "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
         "`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Delete",
@@ -490,12 +576,14 @@
         "Ctrl", "Win", "Alt", { text: "Space", cls: "space" }, "Alt", "Win", "Menu", "←", "↑", "↓", "→"
       ];
       
-
-
       const keyboardKeysDiv = document.getElementById("keyboardKeys");
       const osSelect = document.getElementById("osSelect");
       const saveBtn = document.getElementById("saveBtn");
       const resetBtn = document.getElementById("resetBtn");
+      
+      // Track pressed keys for combination detection
+      const pressedKeys = new Set();
+      const pressedKeyCodes = new Set();
       
       // Predefined actions for shortcut boxes
       const actions = [
@@ -535,6 +623,106 @@
         });
 
         keyboardKeysDiv.innerHTML = rowHtml;
+      }
+
+      // Function to convert key to keycode
+      function getKeyCode(key) {
+        const lowerKey = key.toLowerCase();
+        
+        // Check enhanced mapping first (for modifier keys and special cases)
+        if (enhancedKeyMapping[lowerKey]) {
+          return enhancedKeyMapping[lowerKey];
+        }
+        
+        // Check main key mapping reference
+        if (keyMappingReference[lowerKey]) {
+          return keyMappingReference[lowerKey];
+        }
+        
+        // Check original key name
+        if (keyMappingReference[key]) {
+          return keyMappingReference[key];
+        }
+        
+        // Handle special cases for modifier keys
+        if (key === 'Control' || key === 'Ctrl') return 'KEY_LEFT_CTRL';
+        if (key === 'Shift') return 'KEY_LEFT_SHIFT';
+        if (key === 'Alt' || key === 'Option') return 'KEY_LEFT_ALT';
+        if (key === 'Meta' || key === 'Cmd' || key === 'Command') return 'KEY_LEFT_GUI';
+        
+        // Handle single character keys (letters, numbers, symbols)
+        if (key.length === 1) {
+          if (/[a-zA-Z]/.test(key)) {
+            return `KEY_${key.toUpperCase()}`;
+          }
+          if (/[0-9]/.test(key)) {
+            return `KEY_${key}`;
+          }
+          // For other single characters, return as is
+          return key;
+        }
+        
+        // Return the original key if no mapping found
+        return key;
+      }
+
+      // Function to log key combinations
+      function logKeyCombination() {
+        if (pressedKeyCodes.size > 0) {
+          const keyCombination = Array.from(pressedKeyCodes).sort();
+          console.log('Key combination pressed:', keyCombination);
+          
+          // Also display in the UI for debugging
+          const debugInfo = document.getElementById('debug-info') || createDebugInfo();
+          debugInfo.textContent = `Last combination: [${keyCombination.join(', ')}]`;
+          
+          // Log individual key details for debugging
+          console.log('Individual keys:', Array.from(pressedKeys));
+        }
+      }
+
+      // Function to clear all pressed keys
+      function clearAllKeys() {
+        // Clear all pressed key highlights from the virtual keyboard
+        const keyElements = document.querySelectorAll('.key-display');
+        keyElements.forEach(element => {
+          element.classList.remove('pressed');
+        });
+        
+        pressedKeys.clear();
+        pressedKeyCodes.clear();
+        console.log('All keys cleared manually');
+        
+        // Update debug info
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+          debugInfo.textContent = 'No keys pressed';
+        }
+      }
+
+      // Function to create debug info element
+      function createDebugInfo() {
+        const debugInfo = document.createElement('div');
+        debugInfo.id = 'debug-info';
+        debugInfo.style.cssText = `
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          background: rgba(0,0,0,0.9);
+          color: #ffd700;
+          padding: 15px;
+          border-radius: 8px;
+          font-family: monospace;
+          font-size: 12px;
+          z-index: 1000;
+          max-width: 350px;
+          word-wrap: break-word;
+          border: 2px solid #ffd700;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        `;
+        debugInfo.textContent = 'Click anywhere to focus - then press keys to test';
+        document.body.appendChild(debugInfo);
+        return debugInfo;
       }
 
       window.assignShortcut = function (box) {
@@ -611,9 +799,6 @@
         }
       };
 
-      // Track pressed keys
-      const pressedKeys = new Set();
-
       // Function to highlight pressed keys
       function highlightPressedKey(key, isPressed) {
         const os = osSelect.value;
@@ -621,41 +806,314 @@
         const mappedKey = keyMapping[key] || key;
         
         const keyElements = document.querySelectorAll('.key-display');
+        let foundMatch = false;
+        
         keyElements.forEach(element => {
-          if (element.textContent === mappedKey) {
+          const elementText = element.textContent;
+          let shouldHighlight = false;
+          
+          // Check for exact match first
+          if (elementText === mappedKey) {
+            shouldHighlight = true;
+          }
+          // Check for case-insensitive match (for letters) - both for highlighting and unhighlighting
+          else if (elementText.toLowerCase() === mappedKey.toLowerCase()) {
+            shouldHighlight = true;
+          }
+          // Check for special mappings
+          else if (key === 'Control' && (elementText === 'Control' || elementText === 'Ctrl')) {
+            shouldHighlight = true;
+          }
+          else if (key === 'Shift' && elementText === 'Shift') {
+            shouldHighlight = true;
+          }
+          else if (key === 'Alt' && (elementText === 'Alt' || elementText === 'Option')) {
+            shouldHighlight = true;
+          }
+          else if (key === 'Meta' && (elementText === 'Command' || elementText === 'Win' || elementText === 'Meta')) {
+            shouldHighlight = true;
+          }
+          // Check for arrow keys
+          else if (key === 'ArrowUp' && elementText === '↑') {
+            shouldHighlight = true;
+          }
+          else if (key === 'ArrowDown' && elementText === '↓') {
+            shouldHighlight = true;
+          }
+          else if (key === 'ArrowLeft' && elementText === '←') {
+            shouldHighlight = true;
+          }
+          else if (key === 'ArrowRight' && elementText === '→') {
+            shouldHighlight = true;
+          }
+          // Check for space key
+          else if (key === ' ' && elementText === 'Space') {
+            shouldHighlight = true;
+          }
+          // Check for Enter key
+          else if (key === 'Enter' && elementText === 'Enter') {
+            shouldHighlight = true;
+          }
+          // Check for Tab key
+          else if (key === 'Tab' && elementText === 'Tab') {
+            shouldHighlight = true;
+          }
+          // Check for Escape key
+          else if (key === 'Escape' && elementText === 'Esc') {
+            shouldHighlight = true;
+          }
+          // Check for Backspace key
+          else if (key === 'Backspace' && (elementText === 'Backspace' || elementText === 'Delete')) {
+            shouldHighlight = true;
+          }
+          
+          if (shouldHighlight) {
+            foundMatch = true;
             if (isPressed) {
               element.classList.add('pressed');
-              pressedKeys.add(mappedKey);
+              console.log(`✓ Highlighted: "${elementText}" for key "${key}"`);
             } else {
               element.classList.remove('pressed');
-              pressedKeys.delete(mappedKey);
+              console.log(`✗ Unhighlighted: "${elementText}" for key "${key}"`);
             }
+          }
+        });
+        
+        if (!foundMatch) {
+          console.log(`⚠ No match found for key: "${key}" (mapped: "${mappedKey}")`);
+        }
+      }
+
+      // Function to check if a key combination should be prevented
+      function shouldPreventDefault(event) {
+        const key = event.key;
+        const hasModifiers = event.ctrlKey || event.shiftKey || event.altKey || event.metaKey;
+        
+        // Always prevent modifier keys alone
+        if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta' || 
+            key === 'Ctrl' || key === 'Cmd' || key === 'Command') {
+          console.log(`Preventing modifier key alone: ${key}`);
+          return true;
+        }
+        
+        // Prevent ALL modifier key combinations (not just a specific list)
+        if (hasModifiers) {
+          const modifiers = [];
+          if (event.ctrlKey) modifiers.push('Ctrl');
+          if (event.shiftKey) modifiers.push('Shift');
+          if (event.altKey) modifiers.push('Alt');
+          if (event.metaKey) modifiers.push('Cmd');
+          
+          console.log(`Preventing modifier combination: ${modifiers.join('+')}+${key}`);
+          return true;
+        }
+        
+        return false;
+      }
+
+      // Function to clean up stuck highlights
+      function cleanupStuckHighlights() {
+        const keyElements = document.querySelectorAll('.key-display');
+        keyElements.forEach(element => {
+          const elementText = element.textContent;
+          let shouldBeHighlighted = false;
+          
+          // Check if this key should be highlighted based on currently pressed keys
+          for (let pressedKey of pressedKeys) {
+            if (elementText.toLowerCase() === pressedKey.toLowerCase() ||
+                elementText === pressedKey ||
+                (pressedKey === 'Control' && (elementText === 'Control' || elementText === 'Ctrl')) ||
+                (pressedKey === 'Shift' && elementText === 'Shift') ||
+                (pressedKey === 'Alt' && (elementText === 'Alt' || elementText === 'Option')) ||
+                (pressedKey === 'Meta' && (elementText === 'Command' || elementText === 'Win' || elementText === 'Meta'))) {
+              shouldBeHighlighted = true;
+              break;
+            }
+          }
+          
+          // Remove highlight if it shouldn't be highlighted
+          if (!shouldBeHighlighted && element.classList.contains('pressed')) {
+            element.classList.remove('pressed');
+            console.log(`Cleaned up stuck highlight: "${elementText}"`);
           }
         });
       }
 
+      // Function to handle combination release
+      function handleCombinationRelease(releasedKey) {
+        // If a modifier key is released, clear all highlights
+        if (releasedKey === 'Control' || releasedKey === 'Shift' || releasedKey === 'Alt' || 
+            releasedKey === 'Meta' || releasedKey === 'Ctrl' || releasedKey === 'Cmd' || 
+            releasedKey === 'Command') {
+          console.log(`Modifier key released: ${releasedKey} - clearing all highlights`);
+          
+          // Clear all highlights from virtual keyboard
+          const keyElements = document.querySelectorAll('.key-display');
+          keyElements.forEach(element => {
+            element.classList.remove('pressed');
+          });
+          
+          // Clear all pressed keys
+          pressedKeys.clear();
+          pressedKeyCodes.clear();
+          
+          console.log('All keys cleared due to modifier release');
+        }
+      }
+
+      // Function to schedule cleanup of stuck highlights
+      function scheduleCleanup() {
+        // Clear any existing timeout
+        if (window.cleanupTimeout) {
+          clearTimeout(window.cleanupTimeout);
+        }
+        
+        // Schedule cleanup after 100ms
+        window.cleanupTimeout = setTimeout(() => {
+          if (pressedKeys.size === 0 && pressedKeyCodes.size === 0) {
+            // If no keys are pressed but some are still highlighted, clear them
+            const keyElements = document.querySelectorAll('.key-display.pressed');
+            if (keyElements.length > 0) {
+              console.log('Auto-cleaning stuck highlights');
+              keyElements.forEach(element => {
+                element.classList.remove('pressed');
+              });
+            }
+          }
+        }, 100);
+      }
+
       // Handle keydown events
       document.addEventListener('keydown', function(event) {
-        event.preventDefault();
-        highlightPressedKey(event.key, true);
+        const key = event.key;
+        const keyCode = getKeyCode(key);
+        
+        // Special case: Escape key clears all pressed keys
+        if (key === 'Escape' || key === 'Esc') {
+          clearAllKeys();
+          event.preventDefault(); // Only prevent default for Escape
+          return;
+        }
+        
+        // Check if we should prevent default behavior
+        if (shouldPreventDefault(event)) {
+          event.preventDefault();
+          
+          // Get modifier information for better logging
+          const modifiers = [];
+          if (event.ctrlKey) modifiers.push('Ctrl');
+          if (event.shiftKey) modifiers.push('Shift');
+          if (event.altKey) modifiers.push('Alt');
+          if (event.metaKey) modifiers.push('Cmd');
+          
+          const combination = modifiers.length > 0 ? `${modifiers.join('+')}+${key}` : key;
+          console.log(`Prevented default for: ${combination} (${keyCode})`);
+          
+          // Update debug info to show prevention
+          const debugInfo = document.getElementById('debug-info') || createDebugInfo();
+          const currentText = debugInfo.textContent;
+          debugInfo.textContent = `${currentText} (Prevented: ${combination})`;
+          
+          // Clear the "prevented" message after 2 seconds
+          setTimeout(() => {
+            if (debugInfo.textContent.includes('(Prevented:')) {
+              debugInfo.textContent = debugInfo.textContent.replace(/ \(Prevented: [^)]+\)/, '');
+            }
+          }, 2000);
+        }
+        
+        // Add to pressed keys (avoid duplicates)
+        if (!pressedKeys.has(key)) {
+          pressedKeys.add(key);
+          pressedKeyCodes.add(keyCode);
+          
+          // Highlight the key
+          highlightPressedKey(key, true);
+          
+          // Log the combination
+          logKeyCombination();
+          
+          console.log(`Key pressed: ${key} -> ${keyCode}`);
+        }
       });
 
       // Handle keyup events
       document.addEventListener('keyup', function(event) {
-        event.preventDefault();
-        highlightPressedKey(event.key, false);
+        const key = event.key;
+        const keyCode = getKeyCode(key);
+        
+        console.log(`Keyup event triggered for: "${key}" -> "${keyCode}"`);
+        
+        // Handle combination release
+        handleCombinationRelease(key);
+        
+        // Remove from pressed keys (handle case variations)
+        pressedKeys.delete(key);
+        pressedKeys.delete(key.toLowerCase());
+        pressedKeys.delete(key.toUpperCase());
+        pressedKeyCodes.delete(keyCode);
+        
+        // Remove highlight
+        highlightPressedKey(key, false);
+        
+        // Clean up any stuck highlights
+        cleanupStuckHighlights();
+        
+        // Schedule additional cleanup
+        scheduleCleanup();
+        
+        console.log(`Key released: ${key} -> ${keyCode}`);
+        
+        // Log final combination if any keys are still pressed
+        if (pressedKeyCodes.size > 0) {
+          const remainingCombination = Array.from(pressedKeyCodes).sort();
+          console.log('Remaining keys:', remainingCombination);
+        } else {
+          console.log('No keys remaining pressed');
+        }
       });
 
       // Handle window blur to clear all pressed keys
       window.addEventListener('blur', function() {
-        pressedKeys.forEach(key => {
-          highlightPressedKey(key, false);
-        });
-        pressedKeys.clear();
+        clearAllKeys();
+        console.log('All keys cleared (window blur)');
+      });
+
+      // Handle window focus to ensure clean state
+      window.addEventListener('focus', function() {
+        console.log('Window focused - cleaning up any stuck highlights');
+        cleanupStuckHighlights();
+        updateDebugInfo('Window focused - ready for keyboard input');
+      });
+
+      // Handle clicks to ensure focus
+      document.addEventListener('click', function() {
+        console.log('Document clicked - ensuring focus for keyboard input');
+        window.focus();
+      });
+
+      // Function to update debug info
+      function updateDebugInfo(message) {
+        const debugInfo = document.getElementById('debug-info') || createDebugInfo();
+        debugInfo.textContent = message;
+      }
+
+      // Handle document visibility change to clear keys when tab is switched
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          clearAllKeys();
+          console.log('All keys cleared (tab hidden)');
+        }
       });
 
       // Initial render
       updateKeyboardLayout();
+      
+      // Create debug info element
+      createDebugInfo();
+      
+      console.log('Keyboard shortcut manager loaded with key combination tracking');
+      console.log('Press keys to see combinations logged as arrays like [KEY_CTRL, KEY_A]');
     })();
   </script>
 </body>
