@@ -43,7 +43,7 @@ unsigned long keyPressStartTime = 0;
 bool isWakeModeActive = false;             // Toggle sending mode
 unsigned long lastKeySendTime = 0;         // Timer for sending 'a' every 5s
 
-const char* ipServer = "13.201.164.232";
+const char* ipServer = "52.66.6.129";
 String firmwareBinUrl;
 String versionCheckUrl;
 String CURRENT_VERSION;
@@ -230,7 +230,9 @@ void handleWiFiSave() {
 }
 
 void startHotspotAndServer() {
+  WiFi.mode(WIFI_AP);  // or WIFI_AP_STA if you also want STA mode
   WiFi.softAP(fallbackSSID, fallbackPassword);
+  Serial.println("Hotspot started");
   Serial.println("AP IP: " + WiFi.softAPIP().toString());
 
   server.on("/save", HTTP_POST, handleSave);
