@@ -61,7 +61,7 @@ String readStringFromEEPROM(int addr) {
   byte len = EEPROM.read(addr++);
   String value = "";
   for (byte i = 0; i < len; i++) {
-    value += (char)EEPROM.read(addr++);
+  value += (char)EEPROM.read(addr++);
   }
   return value;
 }
@@ -318,6 +318,28 @@ void playTone_LongLowBeep() {
   delay(50);
 }
 
+// Service start tone: faster, brighter
+void wakeFunctionStartBeep() {
+  int tones[] = { 800, 1100, 1500, 1800 };
+  for (int i = 0; i < 4; i++) {
+    tone(buzzerPin, tones[i]);
+    delay(100);
+    noTone(buzzerPin);
+    delay(40);
+  }
+}
+
+// Service stop tone: descending beeps
+void wakeFunctionStopBeep() {
+  int tones[] = { 1200, 700 };
+  for (int i = 0; i < 2; i++) {
+    tone(buzzerPin, tones[i]);
+    delay(200);
+    noTone(buzzerPin);
+    delay(100);
+  }
+}
+
 // ---------- Setup ----------
 void setup() {
   Serial.begin(115200);
@@ -389,7 +411,9 @@ void loop() {
           if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
             isWakeModeActive = !isWakeModeActive;  // Toggle mode
             if(isWakeModeActive){
-                  playTone_LongLowBeep();
+                  wakeFunctionStartBeep();
+                }else{
+                  wakeFunctionStopBeep();
                 }
             Serial.println(isWakeModeActive ? "Auto-send 'a' ON" : "Auto-send 'a' OFF");
                 lastPressTime[r][c] = now;
@@ -408,7 +432,7 @@ void loop() {
   }
 
     if (isWakeModeActive && bleKeyboard.isConnected()) {
-      if (millis() - lastKeySendTime >= 5000) {
+      if (millis() - lastKeySendTime >= 60*1000) {
         char randomLetter = generateRandomLetter();
         bleKeyboard.press(randomLetter);
         delay(10);  // Small delay to simulate keypress
