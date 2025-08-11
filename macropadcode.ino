@@ -5,6 +5,10 @@
 #include <BleKeyboard.h>
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include "esp_bt.h"
+#include "esp_gap_ble_api.h"
 
 #define EEPROM_SIZE 1024
 #define MAPPING_COUNT 9
@@ -47,6 +51,13 @@ const char* ipServer = "52.66.6.129";
 String firmwareBinUrl;
 String versionCheckUrl;
 String CURRENT_VERSION;
+
+unsigned long keyPressStartTime_BT = 0;
+bool keyHeld_BT = false;
+bool bluetoothConnected = false;
+
+unsigned long keyPressStartTime_AP = 0;
+bool keyHeld_AP = false;
 
 // ---------- EEPROM ----------
 void writeStringToEEPROM(int addr, const String &data) {
@@ -384,30 +395,76 @@ char generateRandomLetter(){
   return letter;
 }
 
+
+int nameToggle = 0;
+const String baseName = "DLS_MPAD";
+
+void disconnectBluetooth() {
+  if (bleKeyboard.isConnected()) {
+    Serial.println("Disconnecting current device...");
+
+    bleKeyboard.end();            // Stop BLE HID service and disconnect
+    delay(200);                   // Small delay to ensure disconnect
+
+    // Change advertised name to avoid caching issues on hosts
+    nameToggle++;
+    String newName = baseName + "-" + String(nameToggle);
+
+    // Reinitialize bleKeyboard with new name
+    bleKeyboard = BleKeyboard(newName.c_str(), "Domestic Labs", 100);
+    bleKeyboard.begin();
+
+    Serial.println("Restarted advertising as: " + newName);
+  } else {
+    Serial.println("Not connected, just starting advertising...");
+    bleKeyboard.begin();
+  }
+}
+
 // ---------- Loop ----------
 void loop() {
   server.handleClient();
   unsigned long now = millis();
-
+  bluetoothConnected = bleKeyboard.isConnected();
   for (byte r = 0; r < numRows; r++) {
     digitalWrite(rowPins[r], LOW);
     for (byte c = 0; c < numCols; c++) {
       bool keyPressed = (digitalRead(colPins[c]) == LOW);
-      if (r == 1 && c == 0) {
-        if (keyPressed) {
-          if (!keyHeld) {
-            keyPressStartTime = now;
-            keyHeld = true;
-          } else if ((now - keyPressStartTime >= 10000) && !serverStarted) {
-            Serial.println("10s key hold detected. Starting hotspot and server.");
-            playTone_SharpBlips();
-            startHotspotAndServer();
-            serverStarted = true;
-          }
-        } else {
-          keyHeld = false;
+
+      if (r == 0 && c == 0) {
+            if (keyPressed) {
+                if (!keyHeld_BT) {
+                    keyPressStartTime_BT = now;
+                    keyHeld_BT = true;
+                } else if ((now - keyPressStartTime_BT >= 5000) && bluetoothConnected) {
+                    Serial.println("5s key hold detected. Disconnecting Bluetooth.");
+                    playTone_SharpBlips();
+                    disconnectBluetooth();  // <-- Your function to end BLE/BT
+                    bluetoothConnected = false;
+                }
+            } else {
+                keyHeld_BT = false;
+            }
+
+        // ---- Second button: Start hotspot/server after 5s hold ----
+        } else if (r == 1 && c == 0) {
+            if (keyPressed) {
+                if (!keyHeld_AP) {
+                    keyPressStartTime_AP = now;
+                    keyHeld_AP = true;
+                } else if ((now - keyPressStartTime_AP >= 5000) && !serverStarted) {
+                    Serial.println("5s key hold detected. Starting hotspot and server.");
+                    playTone_SharpBlips();
+                    startHotspotAndServer();
+                    serverStarted = true;
+                }
+            } else {
+                keyHeld_AP = false;
+            }
+        
         }
-      } else if (r == 2 && c == 0) {
+        // ---- Third button: Toggle Wake mode ----
+         else if (r == 2 && c == 0) {
           if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
             isWakeModeActive = !isWakeModeActive;  // Toggle mode
             if(isWakeModeActive){
@@ -415,7 +472,7 @@ void loop() {
                 }else{
                   wakeFunctionStopBeep();
                 }
-            Serial.println(isWakeModeActive ? "Auto-send 'a' ON" : "Auto-send 'a' OFF");
+            Serial.println(isWakeModeActive ? "Wake mode activated" : "Wake mode deactivated");
                 lastPressTime[r][c] = now;
             }
         } else {
