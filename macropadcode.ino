@@ -9,6 +9,7 @@
 #include <BLEServer.h>
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
+#include "frontend_html.h"
 
 #define EEPROM_SIZE 1024
 #define MAPPING_COUNT 9
@@ -241,11 +242,18 @@ void handleWiFiSave() {
 }
 
 void startHotspotAndServer() {
-  WiFi.mode(WIFI_AP);  // or WIFI_AP_STA if you also want STA mode
+  WiFi.mode(WIFI_AP);
   WiFi.softAP(fallbackSSID, fallbackPassword);
   Serial.println("Hotspot started");
   Serial.println("AP IP: " + WiFi.softAPIP().toString());
 
+  // Serve the HTML UI
+  server.on("/", HTTP_GET, []() {
+    server.sendHeader("Cache-Control", "max-age=3600");
+    server.send_P(200, "text/html", FRONTEND_HTML);
+});
+
+  // Existing API endpoints
   server.on("/save", HTTP_POST, handleSave);
   server.on("/getkeymapping", HTTP_GET, handleGet);
   server.on("/wifi", HTTP_POST, handleWiFiSave);

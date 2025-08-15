@@ -1,0 +1,1249 @@
+const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Keyboard Shortcut Grid</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    @font-face {
+      font-family: 'Inter';
+      src: url('data:font/woff2;base64,AAEAAAALAIAAAwAwT1MvMgAAAA...') format('woff2');
+      font-weight: 300 700;
+      font-style: normal;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #f0f0f0;
+      min-height: 100vh;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 
+                  0 0 0 1px rgba(255, 217, 0, 0.1);
+      border: 1px solid rgba(255, 217, 0, 0.15);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #ffd700, #ffb700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 10px rgba(255, 215, 0, 0.2);
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: #94a3b8;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .dropdown {
+      position: relative;
+      min-width: 200px;
+    }
+
+    select {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 16px;
+      border-radius: 14px;
+      border: none;
+      background: rgba(30, 41, 59, 0.8);
+      color: #e2e8f0;
+      appearance: none;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 
+                  inset 0 0 0 1px rgba(255, 217, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 217, 0, 0.4), 
+                  inset 0 0 0 1px rgba(255, 217, 0, 0.3);
+    }
+
+    select:hover {
+      background: rgba(41, 55, 80, 0.8);
+    }
+
+    .dropdown::after {
+      content: "▼";
+      position: absolute;
+      top: 50%;
+      right: 20px;
+      transform: translateY(-50%);
+      color: #ffd700;
+      pointer-events: none;
+      font-size: 12px;
+    }
+
+    .btn {
+      background: linear-gradient(to right, #ffd700, #ffb700);
+      color: #0f172a;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3),
+                  0 0 0 1px rgba(255, 217, 0, 0.3);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 7px 20px rgba(255, 215, 0, 0.4),
+                  0 0 0 1px rgba(255, 217, 0, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .key-box {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+      border-radius: 20px;
+      padding: 20px 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
+                  inset 0 0 0 1px rgba(255, 217, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 120px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .key-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4),
+                  0 0 0 2px rgba(255, 217, 0, 0.25);
+    }
+
+    .key-box::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .key-box:hover::before {
+      opacity: 1;
+    }
+
+    .key-box .action-label {
+      font-size: 1rem;
+      color: #e2e8f0;
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    .key-box .shortcut-text {
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      font-weight: 500;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: #2a2a2a;
+      margin: 5% auto;
+      padding: 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border: 1px solid #ffd700;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #444;
+    }
+
+    .modal-title {
+      color: #ffd700;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .close:hover {
+      color: #ffd700;
+    }
+
+    .keyboard-illustration {
+      background: #3a3a3a;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .keyboard-illustration h2 {
+      text-align: center;
+      margin-bottom: 15px;
+      color: #ffd700;
+      font-size: 1.2rem;
+    }
+
+    .keyboard-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .key-display {
+      background: #4a4a4a;
+      margin: 3px;
+      padding: 8px 12px;
+      border-radius: 5px;
+      font-size: 12px;
+      min-width: 30px;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .key-display:hover {
+      background: #5a5a5a;
+    }
+
+    .key-display.pressed {
+      background: #ffd700;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .key-display.space {
+      min-width: 120px;
+    }
+
+    .modal-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .modal-btn.primary {
+      background: #ffd700;
+      color: #000;
+    }
+
+    .modal-btn.secondary {
+      background: #4a4a4a;
+      color: #fff;
+    }
+
+    .modal-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        padding: 20px;
+      }
+      
+      .key-display {
+        padding: 6px 10px;
+        font-size: 11px;
+        min-width: 25px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Keyboard Shortcut Manager</h1>
+      <p class="subtitle">Customize and visualize your keyboard shortcuts with our modern interface. Assign shortcuts to actions and see them displayed on the interactive keyboard.</p>
+    </header>
+
+    <div class="controls">
+      <div class="dropdown">
+        <select id="osSelect">
+          <option value="mac">macOS</option>
+          <option value="windows">Windows</option>
+        </select>
+      </div>
+      
+      <button class="btn" id="saveBtn">
+        <i class="fas fa-save"></i> Save Configuration
+      </button>
+      
+      <button class="btn" id="resetBtn">
+        <i class="fas fa-redo"></i> Reset to Defaults
+      </button>
+    </div>
+
+    <div class="grid" id="shortcutGrid">
+      <div class="key-box" onclick="openKeyboardModal(this, 0)">
+        <div class="action-label">New Document</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 1)">
+        <div class="action-label">Save File</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 2)">
+        <div class="action-label">Copy Selection</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 3)">
+        <div class="action-label">Paste Content</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 4)">
+        <div class="action-label">Undo Action</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 5)">
+        <div class="action-label">Find Text</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 6)">
+        <div class="action-label">Toggle Fullscreen</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 7)">
+        <div class="action-label">Print Document</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+      <div class="key-box" onclick="openKeyboardModal(this, 8)">
+        <div class="action-label">Refresh Page</div>
+        <div class="shortcut-text">Click to assign</div>
+      </div>
+    </div>
+
+    <!-- Keyboard Modal -->
+    <div id="keyboardModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modalTitle">Assign Shortcut</h2>
+          <span class="close" onclick="closeKeyboardModal()">&times;</span>
+        </div>
+        
+        <div class="keyboard-illustration">
+          <h2>Interactive Keyboard Layout</h2>
+          <div class="keyboard-keys" id="keyboardKeys"></div>
+        </div>
+        
+        <div class="modal-controls">
+          <button class="modal-btn secondary" onclick="clearCurrentShortcut()">Clear Shortcut</button>
+          <button class="modal-btn primary" onclick="saveCurrentShortcut()">Save Shortcut</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global variables for modal state
+    let currentModalIndex = -1;
+    let currentModalBox = null;
+    let currentShortcut = '';
+    
+    // Global shortcuts list (9 elements for numpad positions 0x1 to 0x9)
+    let shortcutsList = new Array(9).fill('');
+    
+    // Global pressed keys tracking for toggle behavior
+    let pressedKeys = new Set();
+    let pressedKeyCodes = new Set();
+
+    // Global modal functions
+    function openKeyboardModal(box, index) {
+      currentModalIndex = index;
+      currentModalBox = box;
+      currentShortcut = '';
+      
+      const actionLabel = box.querySelector('.action-label').textContent;
+      const modalTitle = document.getElementById('modalTitle');
+      modalTitle.textContent = `Assign Shortcut for "${actionLabel}"`;
+
+      // Show the modal
+      document.getElementById('keyboardModal').style.display = 'block';
+      
+      // Create and show debug info with current shortcuts list
+      if (window.createDebugInfo) {
+        window.createDebugInfo();
+      }
+      
+      // Update debug info with current shortcuts list
+      if (window.updateDebugInfo) {
+        let debugText = 'Click anywhere to focus - then press keys to test\n\n';
+        debugText += 'Current Shortcuts:\n';
+        for (let i = 0; i < shortcutsList.length; i++) {
+          const numpadPosition = `0x${i + 1}`;
+          const shortcut = shortcutsList[i] || 'Not assigned';
+          debugText += `${numpadPosition}: ${shortcut}\n`;
+        }
+        window.updateDebugInfo(debugText);
+      }
+      
+      // Update keyboard layout in modal
+      if (window.updateKeyboardLayout) {
+        window.updateKeyboardLayout();
+      }
+      
+      // Clear any existing highlights
+      if (window.clearAllKeys) {
+        window.clearAllKeys();
+      }
+      
+      console.log(`Modal opened for action: ${actionLabel}`);
+    }
+
+    function closeKeyboardModal() {
+      document.getElementById('keyboardModal').style.display = 'none';
+      
+      // Hide/remove debug info
+      const debugInfo = document.getElementById('debug-info');
+      if (debugInfo) {
+        debugInfo.remove();
+      }
+      
+      if (window.clearAllKeys) {
+        window.clearAllKeys();
+      }
+      currentModalIndex = -1;
+      currentModalBox = null;
+      currentShortcut = '';
+      console.log('Modal closed');
+    }
+
+    function clearCurrentShortcut() {
+      currentShortcut = '';
+      
+      // Clear all pressed keys
+      pressedKeys.clear();
+      pressedKeyCodes.clear();
+      
+      if (window.clearAllKeys) {
+        window.clearAllKeys();
+      }
+      
+      // Update debug info
+      if (window.logKeyCombination) {
+        window.logKeyCombination();
+      }
+      
+      console.log('Current shortcut cleared - all keys deactivated');
+    }
+
+    function saveCurrentShortcut() {
+      if (currentShortcut && currentModalBox) {
+        const actionLabel = currentModalBox.querySelector('.action-label').textContent;
+        
+        // Update the shortcut text in the grid
+        currentModalBox.querySelector('.shortcut-text').textContent = currentShortcut;
+        
+        // Save to the global shortcuts list (numpad position mapping)
+        // 0x1 = index 0, 0x2 = index 1, 0x3 = index 2, etc.
+        shortcutsList[currentModalIndex] = currentShortcut;
+        
+        // Print the complete shortcuts list to console
+        console.log('=== COMPLETE SHORTCUTS LIST ===');
+        console.log('Numpad Position -> Shortcut Mapping:');
+        for (let i = 0; i < shortcutsList.length; i++) {
+          const numpadPosition = `0x${i + 1}`;
+          const shortcut = shortcutsList[i] || 'Not assigned';
+          console.log(`${numpadPosition} (index ${i}): ${shortcut}`);
+        }
+        console.log('===============================');
+        
+        console.log(`Shortcut saved for "${actionLabel}": ${currentShortcut}`);
+        alert(`Shortcut for "${actionLabel}" saved: ${currentShortcut}`);
+        closeKeyboardModal();
+      } else {
+        alert('Please press a key combination first.');
+      }
+    }
+
+    (function () {
+      // Key mapping reference from keymapping.csv
+      const keyMappingReference = {
+        // Letters A-Z
+        'a': 'KEY_A', 'b': 'KEY_B', 'c': 'KEY_C', 'd': 'KEY_D', 'e': 'KEY_E',
+        'f': 'KEY_F', 'g': 'KEY_G', 'h': 'KEY_H', 'i': 'KEY_I', 'j': 'KEY_J',
+        'k': 'KEY_K', 'l': 'KEY_L', 'm': 'KEY_M', 'n': 'KEY_N', 'o': 'KEY_O',
+        'p': 'KEY_P', 'q': 'KEY_Q', 'r': 'KEY_R', 's': 'KEY_S', 't': 'KEY_T',
+        'u': 'KEY_U', 'v': 'KEY_V', 'w': 'KEY_W', 'x': 'KEY_X', 'y': 'KEY_Y', 'z': 'KEY_Z',
+        
+        // Digits 0-9
+        '0': 'KEY_0', '1': 'KEY_1', '2': 'KEY_2', '3': 'KEY_3', '4': 'KEY_4',
+        '5': 'KEY_5', '6': 'KEY_6', '7': 'KEY_7', '8': 'KEY_8', '9': 'KEY_9',
+        
+        // Special keys
+        'Enter': 'KEY_ENTER',
+        'Escape': 'KEY_ESC',
+        'Backspace': 'KEY_BACKSPACE',
+        'Tab': 'KEY_TAB',
+        ' ': 'KEY_SPACE',
+        'CapsLock': 'KEY_CAPS_LOCK',
+        
+        // Function keys
+        'F1': 'KEY_F1', 'F2': 'KEY_F2', 'F3': 'KEY_F3', 'F4': 'KEY_F4',
+        'F5': 'KEY_F5', 'F6': 'KEY_F6', 'F7': 'KEY_F7', 'F8': 'KEY_F8',
+        'F9': 'KEY_F9', 'F10': 'KEY_F10', 'F11': 'KEY_F11', 'F12': 'KEY_F12',
+        
+        // Navigation keys
+        'Insert': 'KEY_INSERT',
+        'Delete': 'KEY_DELETE',
+        'Home': 'KEY_HOME',
+        'End': 'KEY_END',
+        'PageUp': 'KEY_PAGE_UP',
+        'PageDown': 'KEY_PAGE_DOWN',
+        
+        // Arrow keys
+        'ArrowUp': 'KEY_UP_ARROW',
+        'ArrowDown': 'KEY_DOWN_ARROW',
+        'ArrowLeft': 'KEY_LEFT_ARROW',
+        'ArrowRight': 'KEY_RIGHT_ARROW',
+        
+        // Modifier keys
+        'Control': 'KEY_LEFT_CTRL',
+        'Shift': 'KEY_LEFT_SHIFT',
+        'Alt': 'KEY_LEFT_ALT',
+        'Meta': 'KEY_LEFT_GUI',
+        
+        // Media keys
+        'MediaPlayPause': 'KEY_MEDIA_PLAY_PAUSE',
+        'MediaVolumeUp': 'KEY_MEDIA_VOLUME_UP',
+        'MediaVolumeDown': 'KEY_MEDIA_VOLUME_DOWN',
+        'MediaMute': 'KEY_MEDIA_MUTE'
+      };
+
+      // Enhanced key mapping for better detection
+      const enhancedKeyMapping = {
+        // Modifier keys with multiple possible names
+        'ctrl': 'KEY_LEFT_CTRL',
+        'control': 'KEY_LEFT_CTRL',
+        'shift': 'KEY_LEFT_SHIFT',
+        'alt': 'KEY_LEFT_ALT',
+        'option': 'KEY_LEFT_ALT',
+        'meta': 'KEY_LEFT_GUI',
+        'cmd': 'KEY_LEFT_GUI',
+        'command': 'KEY_LEFT_GUI',
+        'win': 'KEY_LEFT_GUI',
+        'windows': 'KEY_LEFT_GUI',
+        
+        // Special characters
+        '`': 'KEY_BACKTICK',
+        '-': 'KEY_MINUS',
+        '=': 'KEY_EQUALS',
+        '[': 'KEY_LEFT_BRACKET',
+        ']': 'KEY_RIGHT_BRACKET',
+        '\\': 'KEY_BACKSLASH',
+        ';': 'KEY_SEMICOLON',
+        "'": 'KEY_QUOTE',
+        ',': 'KEY_COMMA',
+        '.': 'KEY_PERIOD',
+        '/': 'KEY_SLASH',
+        
+        // Additional function keys
+        'printscreen': 'KEY_PRINT_SCREEN',
+        'scrolllock': 'KEY_SCROLL_LOCK',
+        'pausebreak': 'KEY_PAUSE_BREAK'
+      };
+
+      const macKeys = [
+        "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+        "`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Delete",
+        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\",
+        "Caps", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter",
+        "Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift",
+        "Control", "Option", "Command", { text: "Space", cls: "space" }, "Command", "Option", "←", "↑", "↓", "→"
+      ];
+
+      const winKeys = [
+        "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+        "`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Backspace",
+        "Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\",
+        "Caps Lock", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter",
+        "Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift",
+        "Ctrl", "Win", "Alt", { text: "Space", cls: "space" }, "Alt", "Win", "Menu", "←", "↑", "↓", "→"
+      ];
+      
+      const keyboardKeysDiv = document.getElementById("keyboardKeys");
+      const osSelect = document.getElementById("osSelect");
+      const saveBtn = document.getElementById("saveBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      
+      // Track pressed keys for combination detection
+      // const pressedKeys = new Set(); // Moved to global scope
+      // const pressedKeyCodes = new Set(); // Moved to global scope
+      
+      // Predefined actions for shortcut boxes
+      const actions = [
+        "New Document",
+        "Save File", 
+        "Copy Selection",
+        "Paste Content",
+        "Undo Action",
+        "Find Text",
+        "Toggle Fullscreen",
+        "Print Document",
+        "Refresh Page"
+      ];
+
+      // Close modal when clicking outside
+      window.onclick = function(event) {
+        const modal = document.getElementById('keyboardModal');
+        if (event.target === modal) {
+          closeKeyboardModal();
+        }
+      }
+
+      // Close modal with Escape key
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && document.getElementById('keyboardModal').style.display === 'block') {
+          closeKeyboardModal();
+          event.preventDefault();
+          return;
+        }
+        
+        // Only handle key events if modal is open
+        if (document.getElementById('keyboardModal').style.display === 'block') {
+          const key = event.key;
+          const keyCode = window.getKeyCode ? window.getKeyCode(key) : key;
+          
+          // Check if we should prevent default behavior
+          if (window.shouldPreventDefault && window.shouldPreventDefault(event)) {
+            event.preventDefault();
+            
+            // Toggle key state - if already pressed, remove it; if not pressed, add it
+            if (pressedKeys.has(key)) {
+              // Key is already active, deactivate it
+              pressedKeys.delete(key);
+              pressedKeyCodes.delete(keyCode);
+              
+              // Remove highlight
+              if (window.highlightPressedKey) {
+                window.highlightPressedKey(key, false);
+              }
+              
+              console.log(`Key deactivated: ${key} -> ${keyCode}`);
+            } else {
+              // Key is not active, activate it
+              pressedKeys.add(key);
+              pressedKeyCodes.add(keyCode);
+              
+              // Highlight the key
+              if (window.highlightPressedKey) {
+                window.highlightPressedKey(key, true);
+              }
+              
+              console.log(`Key activated: ${key} -> ${keyCode}`);
+            }
+            
+            // Update current shortcut based on all active keys
+            if (pressedKeyCodes.size > 0) {
+              const keyCombination = Array.from(pressedKeyCodes).sort();
+              currentShortcut = keyCombination.join('+');
+              console.log(`Current shortcut: ${currentShortcut}`);
+            } else {
+              currentShortcut = '';
+              console.log('No keys active');
+            }
+            
+            // Log the combination
+            if (window.logKeyCombination) {
+              window.logKeyCombination();
+            }
+          }
+        }
+      });
+
+      // Make functions globally accessible
+      window.updateKeyboardLayout = updateKeyboardLayout;
+      window.clearAllKeys = clearAllKeys;
+      window.getKeyCode = getKeyCode;
+      window.shouldPreventDefault = shouldPreventDefault;
+      window.highlightPressedKey = highlightPressedKey;
+      window.logKeyCombination = logKeyCombination;
+      window.handleCombinationRelease = handleCombinationRelease;
+      window.cleanupStuckHighlights = cleanupStuckHighlights;
+      window.scheduleCleanup = scheduleCleanup;
+      window.updateDebugInfo = updateDebugInfo;
+      window.createDebugInfo = createDebugInfo; // Added createDebugInfo to global scope
+
+      saveBtn.addEventListener("click", function() {
+        alert("Shortcut configuration saved successfully!");
+      });
+      
+      resetBtn.addEventListener("click", function() {
+        if (confirm("Are you sure you want to reset all shortcuts to default?")) {
+          document.querySelectorAll('.key-box').forEach((box, index) => {
+            box.querySelector('.shortcut-text').textContent = actions[index] || '';
+            box.querySelector('.plus').style.display = 'block';
+            box.querySelector('.hint').textContent = "Click to assign";
+          });
+          alert("All shortcuts have been reset to default!");
+        }
+      });
+
+      osSelect.addEventListener("change", updateKeyboardLayout);
+
+      // Key mapping for different OS
+      const keyMappings = {
+        mac: {
+          'Escape': 'Esc',
+          'Backspace': 'Delete',
+          'CapsLock': 'Caps',
+          'Meta': 'Command',
+          'Alt': 'Option',
+          'Control': 'Control',
+          'Shift': 'Shift',
+          'Enter': 'Enter',
+          'Tab': 'Tab',
+          ' ': 'Space',
+          'ArrowLeft': '←',
+          'ArrowUp': '↑',
+          'ArrowDown': '↓',
+          'ArrowRight': '→'
+        },
+        windows: {
+          'Escape': 'Esc',
+          'Backspace': 'Backspace',
+          'CapsLock': 'Caps Lock',
+          'Meta': 'Win',
+          'Alt': 'Alt',
+          'Control': 'Ctrl',
+          'Shift': 'Shift',
+          'Enter': 'Enter',
+          'Tab': 'Tab',
+          ' ': 'Space',
+          'ArrowLeft': '←',
+          'ArrowUp': '↑',
+          'ArrowDown': '↓',
+          'ArrowRight': '→',
+          'ContextMenu': 'Menu'
+        }
+      };
+
+      // Function to highlight pressed keys
+      function highlightPressedKey(key, isPressed) {
+        const os = osSelect.value;
+        const keyMapping = keyMappings[os];
+        const mappedKey = keyMapping[key] || key;
+        
+        const keyElements = document.querySelectorAll('.key-display');
+        let foundMatch = false;
+        
+        keyElements.forEach(element => {
+          const elementText = element.textContent;
+          let shouldHighlight = false;
+          
+          // Check for exact match first
+          if (elementText === mappedKey) {
+            shouldHighlight = true;
+          }
+          // Check for case-insensitive match (for letters) - both for highlighting and unhighlighting
+          else if (elementText.toLowerCase() === mappedKey.toLowerCase()) {
+            shouldHighlight = true;
+          }
+          // Check for special mappings
+          else if (key === 'Control' && (elementText === 'Control' || elementText === 'Ctrl')) {
+            shouldHighlight = true;
+          }
+          else if (key === 'Shift' && elementText === 'Shift') {
+            shouldHighlight = true;
+          }
+          else if (key === 'Alt' && (elementText === 'Alt' || elementText === 'Option')) {
+            shouldHighlight = true;
+          }
+          else if (key === 'Meta' && (elementText === 'Command' || elementText === 'Win' || elementText === 'Meta')) {
+            shouldHighlight = true;
+          }
+          // Check for arrow keys
+          else if (key === 'ArrowUp' && elementText === '↑') {
+            shouldHighlight = true;
+          }
+          else if (key === 'ArrowDown' && elementText === '↓') {
+            shouldHighlight = true;
+          }
+          else if (key === 'ArrowLeft' && elementText === '←') {
+            shouldHighlight = true;
+          }
+          else if (key === 'ArrowRight' && elementText === '→') {
+            shouldHighlight = true;
+          }
+          // Check for space key
+          else if (key === ' ' && elementText === 'Space') {
+            shouldHighlight = true;
+          }
+          // Check for Enter key
+          else if (key === 'Enter' && elementText === 'Enter') {
+            shouldHighlight = true;
+          }
+          // Check for Tab key
+          else if (key === 'Tab' && elementText === 'Tab') {
+            shouldHighlight = true;
+          }
+          // Check for Escape key
+          else if (key === 'Escape' && elementText === 'Esc') {
+            shouldHighlight = true;
+          }
+          // Check for Backspace key
+          else if (key === 'Backspace' && (elementText === 'Backspace' || elementText === 'Delete')) {
+            shouldHighlight = true;
+          }
+          
+          if (shouldHighlight) {
+            foundMatch = true;
+            if (isPressed) {
+              element.classList.add('pressed');
+              console.log(`✓ Highlighted: "${elementText}" for key "${key}"`);
+            } else {
+              element.classList.remove('pressed');
+              console.log(`✗ Unhighlighted: "${elementText}" for key "${key}"`);
+            }
+          }
+        });
+        
+        if (!foundMatch) {
+          console.log(`⚠ No match found for key: "${key}" (mapped: "${mappedKey}")`);
+        }
+      }
+
+      // Function to check if a key combination should be prevented
+      function shouldPreventDefault(event) {
+        const key = event.key;
+        const hasModifiers = event.ctrlKey || event.shiftKey || event.altKey || event.metaKey;
+        
+        // Always prevent modifier keys alone
+        if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta' || 
+            key === 'Ctrl' || key === 'Cmd' || key === 'Command') {
+          console.log(`Preventing modifier key alone: ${key}`);
+          return true;
+        }
+        
+        // Prevent ALL modifier key combinations (not just a specific list)
+        if (hasModifiers) {
+          const modifiers = [];
+          if (event.ctrlKey) modifiers.push('Ctrl');
+          if (event.shiftKey) modifiers.push('Shift');
+          if (event.altKey) modifiers.push('Alt');
+          if (event.metaKey) modifiers.push('Cmd');
+          
+          console.log(`Preventing modifier combination: ${modifiers.join('+')}+${key}`);
+          return true;
+        }
+        
+        return false;
+      }
+
+      // Function to clean up stuck highlights
+      function cleanupStuckHighlights() {
+        const keyElements = document.querySelectorAll('.key-display');
+        keyElements.forEach(element => {
+          const elementText = element.textContent;
+          let shouldBeHighlighted = false;
+          
+          // Check if this key should be highlighted based on currently pressed keys
+          for (let pressedKey of pressedKeys) {
+            if (elementText.toLowerCase() === pressedKey.toLowerCase() ||
+                elementText === pressedKey ||
+                (pressedKey === 'Control' && (elementText === 'Control' || elementText === 'Ctrl')) ||
+                (pressedKey === 'Shift' && elementText === 'Shift') ||
+                (pressedKey === 'Alt' && (elementText === 'Alt' || elementText === 'Option')) ||
+                (pressedKey === 'Meta' && (elementText === 'Command' || elementText === 'Win' || elementText === 'Meta'))) {
+              shouldBeHighlighted = true;
+              break;
+            }
+          }
+          
+          // Remove highlight if it shouldn't be highlighted
+          if (!shouldBeHighlighted && element.classList.contains('pressed')) {
+            element.classList.remove('pressed');
+            console.log(`Cleaned up stuck highlight: "${elementText}"`);
+          }
+        });
+      }
+
+      // Function to handle combination release
+      function handleCombinationRelease(releasedKey) {
+        // If a modifier key is released, clear all highlights
+        if (releasedKey === 'Control' || releasedKey === 'Shift' || releasedKey === 'Alt' || 
+            releasedKey === 'Meta' || releasedKey === 'Ctrl' || releasedKey === 'Cmd' || 
+            releasedKey === 'Command') {
+          console.log(`Modifier key released: ${releasedKey} - clearing all highlights`);
+          
+          // Clear all highlights from virtual keyboard
+          const keyElements = document.querySelectorAll('.key-display');
+          keyElements.forEach(element => {
+            element.classList.remove('pressed');
+          });
+          
+          // Clear all pressed keys
+          pressedKeys.clear();
+          pressedKeyCodes.clear();
+          
+          console.log('All keys cleared due to modifier release');
+        }
+      }
+
+      // Function to schedule cleanup of stuck highlights
+      function scheduleCleanup() {
+        // Clear any existing timeout
+        if (window.cleanupTimeout) {
+          clearTimeout(window.cleanupTimeout);
+        }
+        
+        // Schedule cleanup after 100ms
+        window.cleanupTimeout = setTimeout(() => {
+          if (pressedKeys.size === 0 && pressedKeyCodes.size === 0) {
+            // If no keys are pressed but some are still highlighted, clear them
+            const keyElements = document.querySelectorAll('.key-display.pressed');
+            if (keyElements.length > 0) {
+              console.log('Auto-cleaning stuck highlights');
+              keyElements.forEach(element => {
+                element.classList.remove('pressed');
+              });
+            }
+          }
+        }, 100);
+      }
+
+      // Function to convert key to keycode
+      function getKeyCode(key) {
+        const lowerKey = key.toLowerCase();
+        
+        // Check enhanced mapping first (for modifier keys and special cases)
+        if (enhancedKeyMapping[lowerKey]) {
+          return enhancedKeyMapping[lowerKey];
+        }
+        
+        // Check main key mapping reference
+        if (keyMappingReference[lowerKey]) {
+          return keyMappingReference[lowerKey];
+        }
+        
+        // Check original key name
+        if (keyMappingReference[key]) {
+          return keyMappingReference[key];
+        }
+        
+        // Handle special cases for modifier keys
+        if (key === 'Control' || key === 'Ctrl') return 'KEY_LEFT_CTRL';
+        if (key === 'Shift') return 'KEY_LEFT_SHIFT';
+        if (key === 'Alt' || key === 'Option') return 'KEY_LEFT_ALT';
+        if (key === 'Meta' || key === 'Cmd' || key === 'Command') return 'KEY_LEFT_GUI';
+        
+        // Handle single character keys (letters, numbers, symbols)
+        if (key.length === 1) {
+          if (/[a-zA-Z]/.test(key)) {
+            return `KEY_${key.toUpperCase()}`;
+          }
+          if (/[0-9]/.test(key)) {
+            return `KEY_${key}`;
+          }
+          // For other single characters, return as is
+          return key;
+        }
+        
+        // Return the original key if no mapping found
+        return key;
+      }
+
+      // Function to log key combinations
+      function logKeyCombination() {
+        // Update debug info with current combination and shortcuts list
+        let debugText = 'Click anywhere to focus - then press keys to test\n\n';
+        
+        if (pressedKeyCodes.size > 0) {
+          const keyCombination = Array.from(pressedKeyCodes).sort();
+          console.log('Key combination pressed:', keyCombination);
+          
+          debugText += 'Current Combination:\n';
+          debugText += `[${keyCombination.join(', ')}]\n\n`;
+          
+          // Log individual key details for debugging
+          console.log('Individual keys:', Array.from(pressedKeys));
+        } else {
+          debugText += 'Current Combination:\n';
+          debugText += 'No keys active\n\n';
+          console.log('No keys active');
+        }
+        
+        debugText += 'Existing Shortcuts:\n';
+        for (let i = 0; i < shortcutsList.length; i++) {
+          const numpadPosition = `0x${i + 1}`;
+          const shortcut = shortcutsList[i] || 'Not assigned';
+          debugText += `${numpadPosition}: ${shortcut}\n`;
+        }
+        
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+          debugInfo.textContent = debugText;
+        }
+      }
+
+      // Function to clear all pressed keys
+      function clearAllKeys() {
+        // Clear all pressed key highlights from the virtual keyboard
+        const keyElements = document.querySelectorAll('.key-display');
+        keyElements.forEach(element => {
+          element.classList.remove('pressed');
+        });
+        
+        pressedKeys.clear();
+        pressedKeyCodes.clear();
+        console.log('All keys cleared manually');
+        
+        // Update debug info
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+          debugInfo.textContent = 'No keys pressed';
+        }
+      }
+
+      // Function to create debug info element
+      function createDebugInfo() {
+        const debugInfo = document.createElement('div');
+        debugInfo.id = 'debug-info';
+        debugInfo.style.cssText = `
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          background: rgba(0,0,0,0.9);
+          color: #ffd700;
+          padding: 15px;
+          border-radius: 8px;
+          font-family: monospace;
+          font-size: 12px;
+          z-index: 1000;
+          max-width: 350px;
+          word-wrap: break-word;
+          border: 2px solid #ffd700;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        `;
+        debugInfo.textContent = 'Click anywhere to focus - then press keys to test';
+        document.body.appendChild(debugInfo);
+        return debugInfo;
+      }
+
+      // Function to update debug info
+      function updateDebugInfo(message) {
+        let debugInfo = document.getElementById('debug-info');
+        
+        // Only create debug info if modal is open and debug info doesn't exist
+        if (!debugInfo && document.getElementById('keyboardModal').style.display === 'block') {
+          debugInfo = createDebugInfo();
+        }
+        
+        if (debugInfo) {
+          debugInfo.textContent = message;
+        }
+      }
+
+      function updateKeyboardLayout() {
+        const os = osSelect.value;
+        const keys = os === "mac" ? macKeys : winKeys;
+
+        let rowHtml = '';
+        keys.forEach((key, i) => {
+          if (i % 14 === 0) rowHtml += '<div class="keyboard-row">';
+          
+          if (typeof key === 'object') {
+            rowHtml += `<span class="key-display ${key.cls || ''}">${key.text}</span>`;
+          } else {
+            rowHtml += `<span class="key-display">${key}</span>`;
+          }
+          
+          if ((i + 1) % 14 === 0 || i === keys.length - 1) rowHtml += '</div>';
+        });
+
+        keyboardKeysDiv.innerHTML = rowHtml;
+      }
+
+      // Handle keyup events
+      document.addEventListener('keyup', function(event) {
+        // Only handle key events if modal is open
+        if (document.getElementById('keyboardModal').style.display === 'block') {
+          const key = event.key;
+          const keyCode = window.getKeyCode ? window.getKeyCode(key) : key;
+          
+          console.log(`Keyup event triggered for: "${key}" -> "${keyCode}"`);
+          
+          // Note: We don't remove keys on keyup anymore since we want toggle behavior
+          // Keys will only be removed when pressed again (toggled off)
+          
+          // Clean up any stuck highlights (but don't remove from pressed sets)
+          if (window.cleanupStuckHighlights) {
+            window.cleanupStuckHighlights();
+          }
+          
+          // Schedule additional cleanup
+          if (window.scheduleCleanup) {
+            window.scheduleCleanup();
+          }
+          
+          console.log(`Key released (but may still be active): ${key} -> ${keyCode}`);
+          
+          // Log final combination if any keys are still pressed
+          if (pressedKeyCodes.size > 0) {
+            const remainingCombination = Array.from(pressedKeyCodes).sort();
+            console.log('Active keys:', remainingCombination);
+          } else {
+            console.log('No keys active');
+          }
+        }
+      });
+
+      // Handle window blur to clear all pressed keys
+      window.addEventListener('blur', function() {
+        // Only clear keys if modal is open
+        if (document.getElementById('keyboardModal').style.display === 'block') {
+          if (window.clearAllKeys) {
+            window.clearAllKeys();
+          }
+          console.log('All keys cleared (window blur)');
+        }
+      });
+
+      // Handle window focus to ensure clean state
+      window.addEventListener('focus', function() {
+        // Only handle focus events if modal is open
+        if (document.getElementById('keyboardModal').style.display === 'block') {
+          console.log('Window focused - cleaning up any stuck highlights');
+          if (window.cleanupStuckHighlights) {
+            window.cleanupStuckHighlights();
+          }
+          if (window.updateDebugInfo) {
+            window.updateDebugInfo('Window focused - ready for keyboard input');
+          }
+        }
+      });
+
+      // Handle clicks to ensure focus
+      document.addEventListener('click', function() {
+        // Only handle click events if modal is open
+        if (document.getElementById('keyboardModal').style.display === 'block') {
+          console.log('Document clicked - ensuring focus for keyboard input');
+          window.focus();
+        }
+      });
+
+      // Handle document visibility change to clear keys when tab is switched
+      document.addEventListener('visibilitychange', function() {
+        // Only clear keys if modal is open and tab is hidden
+        if (document.hidden && document.getElementById('keyboardModal').style.display === 'block') {
+          if (window.clearAllKeys) {
+            window.clearAllKeys();
+          }
+          console.log('All keys cleared (tab hidden)');
+        }
+      });
+
+      // Initial render
+      updateKeyboardLayout();
+      
+      console.log('Keyboard shortcut manager loaded with modal functionality');
+      console.log('Click any key card to open the keyboard modal');
+    })();
+  </script>
+</body>
+</html>
+)rawliteral";
