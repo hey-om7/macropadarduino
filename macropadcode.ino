@@ -207,7 +207,9 @@ void handleSave() {
   }
 
   saveMappingsToEEPROM();
-  server.send(200, "text/plain", "Saved");
+  server.send(200, "text/plain", "Saved. Restarting...");
+  delay(500);  // give response time to send
+  ESP.restart();  // restart device
 }
 
 void handleGet() {

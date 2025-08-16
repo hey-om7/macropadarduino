@@ -572,8 +572,8 @@
         'u': 'u', 'v': 'v', 'w': 'w', 'x': 'x', 'y': 'y', 'z': 'z',
         
         // Digits 0-9
-        '0': 'KEY_0', '1': 'KEY_1', '2': 'KEY_2', '3': 'KEY_3', '4': 'KEY_4',
-        '5': 'KEY_5', '6': 'KEY_6', '7': 'KEY_7', '8': 'KEY_8', '9': 'KEY_9',
+        '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
+        '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
         
         // Special keys
         'Enter': 'KEY_ENTER',
@@ -749,6 +749,10 @@
       window.createDebugInfo = createDebugInfo; // Added createDebugInfo to global scope
 
       saveBtn.addEventListener("click", function() {
+      // Show restart warning before saving
+      if (!confirm("Once saved, the device will restart. Click OK to proceed.")) {
+        return; // User cancelled
+      }
   // Convert shortcutsList (e.g. "KEY_LEFT_GUI+t") to [["KEY_LEFT_GUI","t"], ...]
   const formattedList = shortcutsList.map(shortcut => {
     if (!shortcut) return [];
