@@ -11,11 +11,12 @@
 #include "esp_gap_ble_api.h"
 #include "frontend_html.h"
 
-#define EEPROM_SIZE 1024
+#define EEPROM_SIZE 2048
 #define MAPPING_COUNT 9
-#define MAX_KEYS_PER_MAPPING 3
-#define VERSION_EEPROM_ADDR 850  // reserve 40 bytes max
-#define WIFI_EEPROM_ADDR 900     // SSID at 900, password at 940
+#define MAX_KEYS_PER_MAPPING 6
+#define VERSION_EEPROM_ADDR 0  // reserve 50 bytes max
+#define WIFI_EEPROM_ADDR 50     // SSID at 50, password at 85
+#define KEYMAPPINGS_ADDR 120
 
 BleKeyboard bleKeyboard("DLS_MPAD", "Domestic Labs", 100);
 
@@ -265,7 +266,7 @@ void startHotspotAndServer() {
 
 // ---------- Key Mapping ----------
 void saveMappingsToEEPROM() {
-  int addr = 0;
+  int addr = KEYMAPPINGS_ADDR;   // start at 120
   for (int i = 0; i < MAPPING_COUNT; i++) {
     for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
       String key = keyMappings[i][j];
@@ -280,7 +281,7 @@ void saveMappingsToEEPROM() {
 }
 
 void loadMappingsFromEEPROM() {
-  int addr = 0;
+  int addr = KEYMAPPINGS_ADDR;   // start at 120
   for (int i = 0; i < MAPPING_COUNT; i++) {
     for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
       byte len = EEPROM.read(addr++);
@@ -396,7 +397,9 @@ void setup() {
 
   if (connectToSavedWiFi()) {
     checkForOTAUpdate();
-    WiFi.setSleep(true); 
+    // WiFi.setSleep(true); 
+    WiFi.disconnect(true);   // disconnect & erase config
+    WiFi.mode(WIFI_OFF);     // shut down radio
   }
 }
 

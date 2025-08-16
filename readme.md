@@ -153,8 +153,7 @@
 
 - Key repeat or macro sequences
 - Configurable wake interval
-- Web UI for tone testing
-- GUI to drag-drop mappings to keys
+- ✅ Web UI / GUI for mapping keys ✅
 - Multi-device Bluetooth pairing memory
 
 ## Details on the library used can be found on below link:
@@ -164,3 +163,5 @@
 ## TODO:
 
 - Light sleep when any key is not pressed for more than 2 minutes.
+- Disconnect from Bluetooth is not possible right now.
+- Go to deep sleep after 30 mins of non keypress.
