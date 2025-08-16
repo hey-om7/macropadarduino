@@ -471,46 +471,29 @@
 
     // Global modal functions
     function openKeyboardModal(box, index) {
-      currentModalIndex = index;
-      currentModalBox = box;
-      currentShortcut = '';
-      
-      const actionLabel = box.querySelector('.action-label').textContent;
-      const modalTitle = document.getElementById('modalTitle');
-      modalTitle.textContent = `Assign Shortcut for "${actionLabel}"`;
+  currentModalIndex = index;
+  currentModalBox = box;
+  currentShortcut = '';
 
-      // Show the modal
-      document.getElementById('keyboardModal').style.display = 'block';
-      
-      // Create and show debug info with current shortcuts list
-      if (window.createDebugInfo) {
-        window.createDebugInfo();
-      }
-      
-      // Update debug info with current shortcuts list
-      if (window.updateDebugInfo) {
-        let debugText = 'Click anywhere to focus - then press keys to test\n\n';
-        debugText += 'Current Shortcuts:\n';
-        for (let i = 0; i < shortcutsList.length; i++) {
-          const numpadPosition = `0x${i + 1}`;
-          const shortcut = shortcutsList[i] || 'Not assigned';
-          debugText += `${numpadPosition}: ${shortcut}\n`;
-        }
-        window.updateDebugInfo(debugText);
-      }
-      
-      // Update keyboard layout in modal
-      if (window.updateKeyboardLayout) {
-        window.updateKeyboardLayout();
-      }
-      
-      // Clear any existing highlights
-      if (window.clearAllKeys) {
-        window.clearAllKeys();
-      }
-      
-      console.log(`Modal opened for action: ${actionLabel}`);
-    }
+  const actionLabel = box.querySelector('.action-label').textContent;
+  const modalTitle = document.getElementById('modalTitle');
+  modalTitle.textContent = `Assign Shortcut for "${actionLabel}"`;
+
+  // Show the modal
+  document.getElementById('keyboardModal').style.display = 'block';
+
+  // Update keyboard layout in modal
+  if (window.updateKeyboardLayout) {
+    window.updateKeyboardLayout();
+  }
+
+  // Clear any existing highlights
+  if (window.clearAllKeys) {
+    window.clearAllKeys();
+  }
+
+  console.log(`Modal opened for action: ${actionLabel}`);
+}
 
     function closeKeyboardModal() {
       document.getElementById('keyboardModal').style.display = 'none';
@@ -582,11 +565,11 @@
       // Key mapping reference from keymapping.csv
       const keyMappingReference = {
         // Letters A-Z
-        'a': 'KEY_A', 'b': 'KEY_B', 'c': 'KEY_C', 'd': 'KEY_D', 'e': 'KEY_E',
-        'f': 'KEY_F', 'g': 'KEY_G', 'h': 'KEY_H', 'i': 'KEY_I', 'j': 'KEY_J',
-        'k': 'KEY_K', 'l': 'KEY_L', 'm': 'KEY_M', 'n': 'KEY_N', 'o': 'KEY_O',
-        'p': 'KEY_P', 'q': 'KEY_Q', 'r': 'KEY_R', 's': 'KEY_S', 't': 'KEY_T',
-        'u': 'KEY_U', 'v': 'KEY_V', 'w': 'KEY_W', 'x': 'KEY_X', 'y': 'KEY_Y', 'z': 'KEY_Z',
+        'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd', 'e': 'e',
+        'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
+        'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
+        'p': 'p', 'q': 'q', 'r': 'r', 's': 's', 't': 't',
+        'u': 'u', 'v': 'v', 'w': 'w', 'x': 'x', 'y': 'y', 'z': 'z',
         
         // Digits 0-9
         '0': 'KEY_0', '1': 'KEY_1', '2': 'KEY_2', '3': 'KEY_3', '4': 'KEY_4',
@@ -715,63 +698,42 @@
 
       // Close modal with Escape key
       document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape' && document.getElementById('keyboardModal').style.display === 'block') {
-          closeKeyboardModal();
-          event.preventDefault();
-          return;
-        }
-        
-        // Only handle key events if modal is open
-        if (document.getElementById('keyboardModal').style.display === 'block') {
-          const key = event.key;
-          const keyCode = window.getKeyCode ? window.getKeyCode(key) : key;
-          
-          // Check if we should prevent default behavior
-          if (window.shouldPreventDefault && window.shouldPreventDefault(event)) {
-            event.preventDefault();
-            
-            // Toggle key state - if already pressed, remove it; if not pressed, add it
-            if (pressedKeys.has(key)) {
-              // Key is already active, deactivate it
-              pressedKeys.delete(key);
-              pressedKeyCodes.delete(keyCode);
-              
-              // Remove highlight
-              if (window.highlightPressedKey) {
-                window.highlightPressedKey(key, false);
-              }
-              
-              console.log(`Key deactivated: ${key} -> ${keyCode}`);
-            } else {
-              // Key is not active, activate it
-              pressedKeys.add(key);
-              pressedKeyCodes.add(keyCode);
-              
-              // Highlight the key
-              if (window.highlightPressedKey) {
-                window.highlightPressedKey(key, true);
-              }
-              
-              console.log(`Key activated: ${key} -> ${keyCode}`);
-            }
-            
-            // Update current shortcut based on all active keys
-            if (pressedKeyCodes.size > 0) {
-              const keyCombination = Array.from(pressedKeyCodes).sort();
-              currentShortcut = keyCombination.join('+');
-              console.log(`Current shortcut: ${currentShortcut}`);
-            } else {
-              currentShortcut = '';
-              console.log('No keys active');
-            }
-            
-            // Log the combination
-            if (window.logKeyCombination) {
-              window.logKeyCombination();
-            }
-          }
-        }
-      });
+  // Only handle key events if modal is open
+  if (document.getElementById('keyboardModal').style.display === 'block') {
+    event.preventDefault(); // <-- Always prevent default when modal is open
+
+    const key = event.key;
+    const keyCode = window.getKeyCode ? window.getKeyCode(key) : key;
+
+    // Toggle key state - if already pressed, remove it; if not pressed, add it
+    if (pressedKeys.has(key)) {
+      pressedKeys.delete(key);
+      pressedKeyCodes.delete(keyCode);
+      if (window.highlightPressedKey) {
+        window.highlightPressedKey(key, false);
+      }
+    } else {
+      pressedKeys.add(key);
+      pressedKeyCodes.add(keyCode);
+      if (window.highlightPressedKey) {
+        window.highlightPressedKey(key, true);
+      }
+    }
+
+    // Update current shortcut based on all active keys
+    if (pressedKeyCodes.size > 0) {
+      const keyCombination = Array.from(pressedKeyCodes).sort();
+      currentShortcut = keyCombination.join('+');
+    } else {
+      currentShortcut = '';
+    }
+
+    // Log the combination
+    if (window.logKeyCombination) {
+      window.logKeyCombination();
+    }
+  }
+});
 
       // Make functions globally accessible
       window.updateKeyboardLayout = updateKeyboardLayout;
@@ -1146,41 +1108,12 @@
 
       // Function to create debug info element
       function createDebugInfo() {
-        const debugInfo = document.createElement('div');
-        debugInfo.id = 'debug-info';
-        debugInfo.style.cssText = `
-          position: fixed;
-          top: 10px;
-          right: 10px;
-          background: rgba(0,0,0,0.9);
-          color: #ffd700;
-          padding: 15px;
-          border-radius: 8px;
-          font-family: monospace;
-          font-size: 12px;
-          z-index: 1000;
-          max-width: 350px;
-          word-wrap: break-word;
-          border: 2px solid #ffd700;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        `;
-        debugInfo.textContent = 'Click anywhere to focus - then press keys to test';
-        document.body.appendChild(debugInfo);
-        return debugInfo;
+        
       }
 
       // Function to update debug info
       function updateDebugInfo(message) {
-        let debugInfo = document.getElementById('debug-info');
         
-        // Only create debug info if modal is open and debug info doesn't exist
-        if (!debugInfo && document.getElementById('keyboardModal').style.display === 'block') {
-          debugInfo = createDebugInfo();
-        }
-        
-        if (debugInfo) {
-          debugInfo.textContent = message;
-        }
       }
 
       function updateKeyboardLayout() {
