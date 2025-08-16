@@ -723,7 +723,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
 
     // Update current shortcut based on all active keys
     if (pressedKeyCodes.size > 0) {
-      const keyCombination = Array.from(pressedKeyCodes).sort();
+      const keyCombination = Array.from(pressedKeyCodes);
       currentShortcut = keyCombination.join('+');
     } else {
       currentShortcut = '';
@@ -749,40 +749,53 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
       window.updateDebugInfo = updateDebugInfo;
       window.createDebugInfo = createDebugInfo; // Added createDebugInfo to global scope
 
-      saveBtn.addEventListener("click", function() {
-      // Show restart warning before saving
-      if (!confirm("Once saved, the device will restart. Click OK to proceed.")) {
-        return; // User cancelled
+      function openRestartModal(onOk) {
+        document.getElementById('restartModal').style.display = 'block';
+        document.getElementById('restartOkBtn').onclick = function() {
+          document.getElementById('restartModal').style.display = 'none';
+          onOk();
+        };
+        document.getElementById('restartCancelBtn').onclick = closeRestartModal;
+        document.getElementById('restartModalClose').onclick = closeRestartModal;
+        // Also close modal if user clicks outside modal-content
+        document.getElementById('restartModal').onclick = function(e) {
+          if (e.target === this) closeRestartModal();
+        };
       }
-  // Convert shortcutsList (e.g. "KEY_LEFT_GUI+t") to [["KEY_LEFT_GUI","t"], ...]
-  const formattedList = shortcutsList.map(shortcut => {
-    if (!shortcut) return [];
-    // Split by "+" or "," (support both delimiters)
-    return shortcut.split(/[+,]/).map(s => s.trim()).filter(Boolean);
-  });
+function closeRestartModal() {
+  document.getElementById('restartModal').style.display = 'none';
+}
 
-    fetch("http://192.168.4.1/savekeymapping", {
-        method: "POST",
-        headers: {
+saveBtn.addEventListener("click", function() {
+  openRestartModal(function() {
+    console.log("OK clicked, preparing fetch...");
+
+    const formattedList = shortcutsList.map(shortcut => {
+      if (!shortcut) return [];
+      return shortcut.split(/[+,]/).map(s => s.trim()).filter(Boolean);
+    });
+
+    fetch("http://192.168.4.1/savekeymapping", {   // <-- match FastAPI route
+      method: "POST",
+      headers: {
         "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formattedList)
+      },
+      body: JSON.stringify(formattedList)
     })
     .then(response => {
-        if (!response.ok) {
-        throw new Error("Network response was not ok");
-        }
-        return response.text();
+      if (!response.ok) throw new Error("Network response was not ok");
+      return response.text();
     })
     .then(data => {
-        console.log("Configuration saved:", data);
-        alert("Shortcut configuration saved successfully!");
+      console.log("Configuration saved:", data);
+      alert("Shortcut configuration saved successfully!");
     })
     .catch(error => {
-        console.error("Error saving configuration:", error);
-        alert("Failed to save configuration. See console for details.");
+      console.error("Error saving configuration:", error);
+      alert("Failed to save configuration. See console for details.");
     });
-    });
+  });
+});
       
       resetBtn.addEventListener("click", function() {
         if (confirm("Are you sure you want to reset all shortcuts to default?")) {
@@ -1227,6 +1240,22 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
       console.log('Click any key card to open the keyboard modal');
     })();
   </script>
+  <!-- Add this modal just before the closing </body> tag -->
+<div id="restartModal" class="modal">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="modal-header">
+      <h2 class="modal-title">Restart Required</h2>
+      <span class="close" id="restartModalClose">&times;</span>
+    </div>
+    <div style="padding: 20px 0; color: #ffd700; text-align: center;">
+      Once saved, the device will restart.<br>Click OK to proceed.
+    </div>
+    <div class="modal-controls">
+      <button class="modal-btn primary" id="restartOkBtn">OK</button>
+      <button class="modal-btn secondary" id="restartCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 )rawliteral";
