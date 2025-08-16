@@ -156,3 +156,7 @@
 - Web UI for tone testing
 - GUI to drag-drop mappings to keys
 - Multi-device Bluetooth pairing memory
+
+## Details on the library used can be found on below link:
+
+- https://github.com/T-vK/ESP32-BLE-Keyboard
