@@ -5,7 +5,8 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Modern Keyboard Shortcut Grid</title>
-
+  <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> -->
   <style>
     * {
       box-sizing: border-box;
@@ -13,15 +14,8 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
       padding: 0;
       font-family: 'Inter', sans-serif;
     }
-    @font-face {
-      font-family: 'Inter';
-      src: url('data:font/woff2;base64,AAEAAAALAIAAAwAwT1MvMgAAAA...') format('woff2');
-      font-weight: 300 700;
-      font-style: normal;
-    }
 
     body {
-      font-family: 'Inter', sans-serif;
       background: linear-gradient(135deg, #0f172a, #1e293b);
       color: #f0f0f0;
       min-height: 100vh;
@@ -451,6 +445,31 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     let pressedKeys = new Set();
     let pressedKeyCodes = new Set();
 
+
+    document.addEventListener("DOMContentLoaded", function() {
+    fetch("http://192.168.4.1/getkeymapping")
+        .then(response => response.json())
+        .then(data => {
+        // Save mappings globally
+        window.keyMappings = data;
+
+        // Map keyMappings to shortcut boxes
+        document.querySelectorAll('.key-box').forEach((box, index) => {
+            const shortcutText = box.querySelector('.shortcut-text');
+            if (data[index]) {
+            shortcutText.textContent = data[index].join(" + ");
+            shortcutsList[index] = data[index].join(" + "); // <-- Map to shortcutsList
+            } else {
+            shortcutText.textContent = "Click to assign";
+            shortcutsList[index] = ""; // <-- Ensure empty if not present
+            }
+        });
+        })
+        .catch(err => {
+        console.error("Error fetching key mappings:", err);
+        });
+    });
+
     // Global modal functions
     function openKeyboardModal(box, index) {
       currentModalIndex = index;
@@ -769,8 +788,35 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
       window.createDebugInfo = createDebugInfo; // Added createDebugInfo to global scope
 
       saveBtn.addEventListener("click", function() {
+  // Convert shortcutsList (e.g. "KEY_LEFT_GUI+t") to [["KEY_LEFT_GUI","t"], ...]
+  const formattedList = shortcutsList.map(shortcut => {
+    if (!shortcut) return [];
+    // Split by "+" or "," (support both delimiters)
+    return shortcut.split(/[+,]/).map(s => s.trim()).filter(Boolean);
+  });
+
+    fetch("http://192.168.4.1/savekeymapping", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formattedList)
+    })
+    .then(response => {
+        if (!response.ok) {
+        throw new Error("Network response was not ok");
+        }
+        return response.text();
+    })
+    .then(data => {
+        console.log("Configuration saved:", data);
         alert("Shortcut configuration saved successfully!");
-      });
+    })
+    .catch(error => {
+        console.error("Error saving configuration:", error);
+        alert("Failed to save configuration. See console for details.");
+    });
+    });
       
       resetBtn.addEventListener("click", function() {
         if (confirm("Are you sure you want to reset all shortcuts to default?")) {

@@ -254,7 +254,7 @@ void startHotspotAndServer() {
 });
 
   // Existing API endpoints
-  server.on("/save", HTTP_POST, handleSave);
+  server.on("/savekeymapping", HTTP_POST, handleSave);
   server.on("/getkeymapping", HTTP_GET, handleGet);
   server.on("/wifi", HTTP_POST, handleWiFiSave);
   server.begin();
