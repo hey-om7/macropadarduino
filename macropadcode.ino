@@ -396,6 +396,7 @@ void setup() {
 
   if (connectToSavedWiFi()) {
     checkForOTAUpdate();
+    WiFi.setSleep(true); 
   }
 }
 

@@ -160,3 +160,7 @@
 ## Details on the library used can be found on below link:
 
 - https://github.com/T-vK/ESP32-BLE-Keyboard
+
+## TODO:
+
+- Light sleep when any key is not pressed for more than 2 minutes.
