@@ -441,6 +441,7 @@ void loop() {
     for (byte c = 0; c < numCols; c++) {
       bool keyPressed = (digitalRead(colPins[c]) == LOW);
 
+      // --- Special keys with long press actions ---
       if (r == 0 && c == 0) {
         if (keyPressed) {
           if (!keyHeld_BT) {
@@ -453,6 +454,14 @@ void loop() {
             bluetoothConnected = false;
           }
         } else {
+          // Short press: send mapped key
+          if (keyHeld_BT && (now - keyPressStartTime_BT < 5000) && (now - lastPressTime[r][c] > debounceDelay)) {
+            int keyIndex = r * numCols + c;
+            Serial.print("Short press on special key (BT): ");
+            Serial.println(keyIndex);
+            pressMappedKeys(keyIndex);
+            lastPressTime[r][c] = now;
+          }
           keyHeld_BT = false;
         }
 
@@ -469,23 +478,48 @@ void loop() {
             serverStarted = true;
           }
         } else {
+          // Short press: send mapped key
+          if (keyHeld_AP && (now - keyPressStartTime_AP < 5000) && (now - lastPressTime[r][c] > debounceDelay)) {
+            int keyIndex = r * numCols + c;
+            Serial.print("Short press on special key (AP): ");
+            Serial.println(keyIndex);
+            pressMappedKeys(keyIndex);
+            lastPressTime[r][c] = now;
+          }
           keyHeld_AP = false;
         }
-
       }
       // ---- Third button: Toggle Wake mode ----
       else if (r == 2 && c == 0) {
-        if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
-          isWakeModeActive = !isWakeModeActive;  // Toggle mode
-          if (isWakeModeActive) {
-            wakeFunctionStartBeep();
-          } else {
-            wakeFunctionStopBeep();
+        if (keyPressed) {
+          if (!keyHeld) {
+            keyPressStartTime = now;
+            keyHeld = true;
+          } else if ((now - keyPressStartTime >= 5000)) {
+            // Long press: toggle wake mode
+            isWakeModeActive = !isWakeModeActive;
+            if (isWakeModeActive) {
+              wakeFunctionStartBeep();
+            } else {
+              wakeFunctionStopBeep();
+            }
+            Serial.println(isWakeModeActive ? "Wake mode activated" : "Wake mode deactivated");
+            lastPressTime[r][c] = now;
+            keyHeld = false;  // Reset hold state after long press
           }
-          Serial.println(isWakeModeActive ? "Wake mode activated" : "Wake mode deactivated");
-          lastPressTime[r][c] = now;
+        } else {
+          // Short press: send mapped key
+          if (keyHeld && (now - keyPressStartTime < 5000) && (now - lastPressTime[r][c] > debounceDelay)) {
+            int keyIndex = r * numCols + c;
+            Serial.print("Short press on special key (Wake): ");
+            Serial.println(keyIndex);
+            pressMappedKeys(keyIndex);
+            lastPressTime[r][c] = now;
+          }
+          keyHeld = false;
         }
       } else {
+        // Normal keys
         if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
           int keyIndex = r * numCols + c;
           Serial.print("Key Pressed Index: ");
