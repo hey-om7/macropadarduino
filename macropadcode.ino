@@ -14,13 +14,13 @@
 #define EEPROM_SIZE 1024
 #define MAPPING_COUNT 9
 #define MAX_KEYS_PER_MAPPING 3
-#define VERSION_EEPROM_ADDR 850    // reserve 40 bytes max
-#define WIFI_EEPROM_ADDR 900       // SSID at 900, password at 940
+#define VERSION_EEPROM_ADDR 850  // reserve 40 bytes max
+#define WIFI_EEPROM_ADDR 900     // SSID at 900, password at 940
 
 BleKeyboard bleKeyboard("DLS_MPAD", "Domestic Labs", 100);
 
-const char* fallbackSSID = "DLS_MPAD";
-const char* fallbackPassword = "12345678";
+const char *fallbackSSID = "DLS_MPAD";
+const char *fallbackPassword = "12345678";
 
 // GPIO pin for the buzzer
 const int buzzerPin = 7;
@@ -34,9 +34,9 @@ String keyMappings[MAPPING_COUNT][MAX_KEYS_PER_MAPPING];
 
 const byte numRows = 3;
 const byte numCols = 3;
-byte rowPins[numRows] = {6, 1, 2};
-byte colPins[numCols] = {3, 4, 5};
-unsigned long lastPressTime[numRows][numCols] = {0};
+byte rowPins[numRows] = { 6, 1, 2 };
+byte colPins[numCols] = { 3, 4, 5 };
+unsigned long lastPressTime[numRows][numCols] = { 0 };
 const unsigned long debounceDelay = 300;
 
 String savedSSID = "";
@@ -45,10 +45,10 @@ String savedPassword = "";
 bool serverStarted = false;
 bool keyHeld = false;
 unsigned long keyPressStartTime = 0;
-bool isWakeModeActive = false;             // Toggle sending mode
-unsigned long lastKeySendTime = 0;         // Timer for sending 'a' every 5s
+bool isWakeModeActive = false;      // Toggle sending mode
+unsigned long lastKeySendTime = 0;  // Timer for sending 'a' every 5s
 
-const char* ipServer = "52.66.6.129";
+const char *ipServer = "52.66.6.129";
 String firmwareBinUrl;
 String versionCheckUrl;
 String CURRENT_VERSION;
@@ -73,7 +73,7 @@ String readStringFromEEPROM(int addr) {
   byte len = EEPROM.read(addr++);
   String value = "";
   for (byte i = 0; i < len; i++) {
-  value += (char)EEPROM.read(addr++);
+    value += (char)EEPROM.read(addr++);
   }
   return value;
 }
@@ -148,10 +148,10 @@ void checkForOTAUpdate() {
             Serial.println("No update available.");
             break;
           case HTTP_UPDATE_OK:
-          saveVersionToEEPROM(latestVersion);
-          Serial.println("Update successful. Rebooting...");
-          delay(500);
-          ESP.restart();
+            saveVersionToEEPROM(latestVersion);
+            Serial.println("Update successful. Rebooting...");
+            delay(500);
+            ESP.restart();
             break;
         }
       } else {
@@ -202,13 +202,13 @@ void handleSave() {
   for (int i = 0; i < MAPPING_COUNT; i++) {
     JsonArray inner = doc[i];
     for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
-      keyMappings[i][j] = (j < inner.size()) ? String((const char*)inner[j]) : "";
+      keyMappings[i][j] = (j < inner.size()) ? String((const char *)inner[j]) : "";
     }
   }
 
   saveMappingsToEEPROM();
   server.send(200, "text/plain", "Saved. Restarting...");
-  delay(500);  // give response time to send
+  delay(500);     // give response time to send
   ESP.restart();  // restart device
 }
 
@@ -253,7 +253,7 @@ void startHotspotAndServer() {
   server.on("/", HTTP_GET, []() {
     server.sendHeader("Cache-Control", "max-age=3600");
     server.send_P(200, "text/html", FRONTEND_HTML);
-});
+  });
 
   // Existing API endpoints
   server.on("/savekeymapping", HTTP_POST, handleSave);
@@ -310,9 +310,9 @@ void pressMappedKeys(int index) {
 
 
 void playPowerOnTone() {
-  int toneSequence[] = { 800, 1000, 1200, 1400 }; // Increasing pitch
-  int toneDuration = 120;  // duration of each tone (ms)
-  int gap = 30;            // short gap between tones
+  int toneSequence[] = { 800, 1000, 1200, 1400 };  // Increasing pitch
+  int toneDuration = 120;                          // duration of each tone (ms)
+  int gap = 30;                                    // short gap between tones
 
   for (int i = 0; i < sizeof(toneSequence) / sizeof(toneSequence[0]); i++) {
     tone(buzzerPin, toneSequence[i]);
@@ -399,9 +399,9 @@ void setup() {
   }
 }
 
-char generateRandomLetter(){
-  int randomNumber = random(1, 27);  // 1 to 26
-  char letter = 'a' + (randomNumber - 1); // Map 1→'a', 2→'b', ..., 26→'z'
+char generateRandomLetter() {
+  int randomNumber = random(1, 27);        // 1 to 26
+  char letter = 'a' + (randomNumber - 1);  // Map 1→'a', 2→'b', ..., 26→'z'
   return letter;
 }
 
@@ -413,8 +413,8 @@ void disconnectBluetooth() {
   if (bleKeyboard.isConnected()) {
     Serial.println("Disconnecting current device...");
 
-    bleKeyboard.end();            // Stop BLE HID service and disconnect
-    delay(200);                   // Small delay to ensure disconnect
+    bleKeyboard.end();  // Stop BLE HID service and disconnect
+    delay(200);         // Small delay to ensure disconnect
 
     // Change advertised name to avoid caching issues on hosts
     nameToggle++;
@@ -442,50 +442,50 @@ void loop() {
       bool keyPressed = (digitalRead(colPins[c]) == LOW);
 
       if (r == 0 && c == 0) {
-            if (keyPressed) {
-                if (!keyHeld_BT) {
-                    keyPressStartTime_BT = now;
-                    keyHeld_BT = true;
-                } else if ((now - keyPressStartTime_BT >= 5000) && bluetoothConnected) {
-                    Serial.println("5s key hold detected. Disconnecting Bluetooth.");
-                    playTone_SharpBlips();
-                    disconnectBluetooth();  // <-- Your function to end BLE/BT
-                    bluetoothConnected = false;
-                }
-            } else {
-                keyHeld_BT = false;
-            }
+        if (keyPressed) {
+          if (!keyHeld_BT) {
+            keyPressStartTime_BT = now;
+            keyHeld_BT = true;
+          } else if ((now - keyPressStartTime_BT >= 5000) && bluetoothConnected) {
+            Serial.println("5s key hold detected. Disconnecting Bluetooth.");
+            playTone_SharpBlips();
+            disconnectBluetooth();  // <-- Your function to end BLE/BT
+            bluetoothConnected = false;
+          }
+        } else {
+          keyHeld_BT = false;
+        }
 
         // ---- Second button: Start hotspot/server after 5s hold ----
-        } else if (r == 1 && c == 0) {
-            if (keyPressed) {
-                if (!keyHeld_AP) {
-                    keyPressStartTime_AP = now;
-                    keyHeld_AP = true;
-                } else if ((now - keyPressStartTime_AP >= 5000) && !serverStarted) {
-                    Serial.println("5s key hold detected. Starting hotspot and server.");
-                    playTone_SharpBlips();
-                    startHotspotAndServer();
-                    serverStarted = true;
-                }
-            } else {
-                keyHeld_AP = false;
-            }
-        
-        }
-        // ---- Third button: Toggle Wake mode ----
-         else if (r == 2 && c == 0) {
-          if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
-            isWakeModeActive = !isWakeModeActive;  // Toggle mode
-            if(isWakeModeActive){
-                  wakeFunctionStartBeep();
-                }else{
-                  wakeFunctionStopBeep();
-                }
-            Serial.println(isWakeModeActive ? "Wake mode activated" : "Wake mode deactivated");
-                lastPressTime[r][c] = now;
-            }
+      } else if (r == 1 && c == 0) {
+        if (keyPressed) {
+          if (!keyHeld_AP) {
+            keyPressStartTime_AP = now;
+            keyHeld_AP = true;
+          } else if ((now - keyPressStartTime_AP >= 5000) && !serverStarted) {
+            Serial.println("5s key hold detected. Starting hotspot and server.");
+            playTone_SharpBlips();
+            startHotspotAndServer();
+            serverStarted = true;
+          }
         } else {
+          keyHeld_AP = false;
+        }
+
+      }
+      // ---- Third button: Toggle Wake mode ----
+      else if (r == 2 && c == 0) {
+        if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
+          isWakeModeActive = !isWakeModeActive;  // Toggle mode
+          if (isWakeModeActive) {
+            wakeFunctionStartBeep();
+          } else {
+            wakeFunctionStopBeep();
+          }
+          Serial.println(isWakeModeActive ? "Wake mode activated" : "Wake mode deactivated");
+          lastPressTime[r][c] = now;
+        }
+      } else {
         if (keyPressed && (now - lastPressTime[r][c] > debounceDelay)) {
           int keyIndex = r * numCols + c;
           Serial.print("Key Pressed Index: ");
@@ -498,15 +498,15 @@ void loop() {
     digitalWrite(rowPins[r], HIGH);
   }
 
-    if (isWakeModeActive && bleKeyboard.isConnected()) {
-      if (millis() - lastKeySendTime >= 60*1000) {
-        char randomLetter = generateRandomLetter();
-        bleKeyboard.press(randomLetter);
-        delay(10);  // Small delay to simulate keypress
-        bleKeyboard.release(randomLetter);
-        Serial.println("Sent key: "+randomLetter);
-        lastKeySendTime = millis();
-      }
+  if (isWakeModeActive && bleKeyboard.isConnected()) {
+    if (millis() - lastKeySendTime >= 60 * 1000) {
+      char randomLetter = generateRandomLetter();
+      bleKeyboard.press(randomLetter);
+      delay(10);  // Small delay to simulate keypress
+      bleKeyboard.release(randomLetter);
+      Serial.println("Sent key: " + randomLetter);
+      lastKeySendTime = millis();
+    }
   }
 
   delay(10);
