@@ -401,6 +401,7 @@ void setup() {
     WiFi.disconnect(true);   // disconnect & erase config
     WiFi.mode(WIFI_OFF);     // shut down radio
   }
+  setCpuFrequencyMhz(80);  
 }
 
 char generateRandomLetter() {
