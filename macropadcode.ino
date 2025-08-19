@@ -10,13 +10,16 @@
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "frontend_html.h"
+#include "esp_sleep.h"
 
 #define EEPROM_SIZE 2048
 #define MAPPING_COUNT 9
 #define MAX_KEYS_PER_MAPPING 6
 #define VERSION_EEPROM_ADDR 0  // reserve 50 bytes max
-#define WIFI_EEPROM_ADDR 50     // SSID at 50, password at 85
+#define WIFI_EEPROM_ADDR 50    // SSID at 50, password at 85
 #define KEYMAPPINGS_ADDR 120
+constexpr int WAKE_MODE_TIMEOUT = 60;  // 60 seconds for wake mode
+
 
 BleKeyboard bleKeyboard("DLS_MPAD", "Domestic Labs", 100);
 
@@ -79,6 +82,12 @@ String readStringFromEEPROM(int addr) {
   return value;
 }
 
+void playBeep(int tuneFrequency = 1000) {
+  tone(buzzerPin, tuneFrequency);  // 1000 Hz tone
+  delay(80);                       // Beep duration (ms)
+  noTone(buzzerPin);               // Stop tone
+}
+
 void saveWiFiCredentials(const String &ssid, const String &password) {
   writeStringToEEPROM(WIFI_EEPROM_ADDR, ssid);
   writeStringToEEPROM(WIFI_EEPROM_ADDR + 32, password);
@@ -117,6 +126,39 @@ bool isVersionNewer(String current, String latest) {
 
   return false;
 }
+
+void goToLightSleep(int seconds) {
+  Serial.println("Going into light sleep for some seconds...");
+  esp_sleep_enable_timer_wakeup(seconds * 1000000ULL);
+  esp_light_sleep_start();
+
+  Serial.println("Woke up from light sleep!");
+  delay(10000);  // Buffer time for wakeup and reconnect to the BLE device
+  reconnectToBLE();
+}
+
+void reconnectToBLE() {
+  if (!bleKeyboard.isConnected()) {
+    while (!bleKeyboard.isConnected()) {
+      Serial.println("Reconnecting to BLE device...");
+      bleKeyboard.begin();
+      delay(2000);  // Wait for reconnection
+      if (bleKeyboard.isConnected()) {
+        Serial.println("Reconnected to BLE device successfully.");
+        playBeep(1200);
+      } else {
+        Serial.println("Failed to reconnect to BLE device.");
+        playBeep(1500);
+      }
+    }
+
+  } else {
+    playBeep(1000);
+    delay(1000);
+    playBeep(1000);
+  }
+}
+
 
 // ---------- OTA Check ----------
 void checkForOTAUpdate() {
@@ -266,7 +308,7 @@ void startHotspotAndServer() {
 
 // ---------- Key Mapping ----------
 void saveMappingsToEEPROM() {
-  int addr = KEYMAPPINGS_ADDR;   // start at 120
+  int addr = KEYMAPPINGS_ADDR;  // start at 120
   for (int i = 0; i < MAPPING_COUNT; i++) {
     for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
       String key = keyMappings[i][j];
@@ -281,7 +323,7 @@ void saveMappingsToEEPROM() {
 }
 
 void loadMappingsFromEEPROM() {
-  int addr = KEYMAPPINGS_ADDR;   // start at 120
+  int addr = KEYMAPPINGS_ADDR;  // start at 120
   for (int i = 0; i < MAPPING_COUNT; i++) {
     for (int j = 0; j < MAX_KEYS_PER_MAPPING; j++) {
       byte len = EEPROM.read(addr++);
@@ -397,11 +439,11 @@ void setup() {
 
   if (connectToSavedWiFi()) {
     checkForOTAUpdate();
-    // WiFi.setSleep(true); 
-    WiFi.disconnect(true);   // disconnect & erase config
-    WiFi.mode(WIFI_OFF);     // shut down radio
+    // WiFi.setSleep(true);
+    WiFi.disconnect(true);  // disconnect & erase config
+    WiFi.mode(WIFI_OFF);    // shut down radio
   }
-  setCpuFrequencyMhz(80);  
+  setCpuFrequencyMhz(80);
 }
 
 char generateRandomLetter() {
@@ -538,15 +580,14 @@ void loop() {
   }
 
   if (isWakeModeActive && bleKeyboard.isConnected()) {
-    if (millis() - lastKeySendTime >= 60 * 1000) {
-      char randomLetter = generateRandomLetter();
-      bleKeyboard.press(randomLetter);
-      delay(10);  // Small delay to simulate keypress
-      bleKeyboard.release(randomLetter);
-      Serial.println("Sent key: " + randomLetter);
-      lastKeySendTime = millis();
-    }
+    char randomLetter = generateRandomLetter();
+    bleKeyboard.press(randomLetter);
+    delay(10);  // Small delay to simulate keypress
+    bleKeyboard.release(randomLetter);
+    Serial.println("Sent key: " + String(randomLetter));
+    lastKeySendTime = millis();
+    goToLightSleep(WAKE_MODE_TIMEOUT);
   }
 
-  delay(10);
+  delay(10);  // Small delay to avoid excessive CPU usage
 }
