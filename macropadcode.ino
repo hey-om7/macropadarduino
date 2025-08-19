@@ -585,6 +585,7 @@ void loop() {
     delay(10);  // Small delay to simulate keypress
     bleKeyboard.release(randomLetter);
     Serial.println("Sent key: " + String(randomLetter));
+    delay(500);
     lastKeySendTime = millis();
     goToLightSleep(WAKE_MODE_TIMEOUT);
   }
