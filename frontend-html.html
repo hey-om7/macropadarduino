@@ -217,7 +217,7 @@
       background: rgba(15, 23, 42, 0.9);
       backdrop-filter: blur(12px);
       margin: 5% auto;
-      padding: 20px 24px;;
+      padding: 20px 24px;
       border-radius: 24px;
       width: 90%;
       max-width: 800px;
@@ -562,23 +562,23 @@
     </div>
   </div>
   <!-- Keyboard Modal -->
-    <div id="keyboardModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title" id="modalTitle">Assign Shortcut</h2>
-          <span class="close" onclick="closeKeyboardModal()">&times;</span>
-        </div>
+  <div id="keyboardModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Assign Shortcut</h2>
+        <span class="close" onclick="closeKeyboardModal()">&times;</span>
+      </div>
 
-        <div class="keyboard-illustration">
-          <div class="keyboard-keys" id="keyboardKeys"></div>
-        </div>
+      <div class="keyboard-illustration">
+        <div class="keyboard-keys" id="keyboardKeys"></div>
+      </div>
 
-        <div class="modal-controls">
-          <button class="modal-btn secondary" onclick="clearCurrentShortcut()">Clear Shortcut</button>
-          <button class="modal-btn primary" onclick="saveCurrentShortcut()">Save Shortcut</button>
-        </div>
+      <div class="modal-controls">
+        <button class="modal-btn secondary" onclick="clearCurrentShortcut()">Clear Shortcut</button>
+        <button class="modal-btn primary" onclick="saveCurrentShortcut()">Save Shortcut</button>
       </div>
     </div>
+  </div>
 
   <script>
     // Global variables for modal state
@@ -615,10 +615,27 @@
 
       if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        toggleIcon.textContent = '🙈';
+        toggleIcon.innerHTML = `
+      <!-- Eye Off SVG -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" fill="none"
+        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3 3l18 18M10.73 5.08A10.45 10.45 0 0112 5c5 0 9.27 3.11 
+             11 7.5a10.9 10.9 0 01-4.07 4.99M6.88 6.88A10.47 10.47 0 001 12.5
+             C2.73 16.89 7 20 12 20c1.61 0 3.13-.31 4.5-.88M9.88 9.88A3 3 0 0012 15
+             a3 3 0 002.12-.88" />
+      </svg>
+    `;
       } else {
         passwordInput.type = 'password';
-        toggleIcon.textContent = '👁️';
+        toggleIcon.innerHTML = `
+      <!-- Eye Open SVG -->
+      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 
+        11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 
+        12.5c-2.76 0-5-2.24-5-5s2.24-5 
+        5-5 5 2.24 5 5-2.24 5-5 5z"/>
+      <circle cx="12" cy="12" r="2.5"/>
+    `;
       }
     }
 
@@ -1531,7 +1548,13 @@
             <input type="password" id="passwordInput" class="form-input" placeholder="Enter WiFi password" required
               autocomplete="off" />
             <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">
-              <span id="passwordToggleIcon">👁️</span>
+              <svg id="passwordToggleIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                viewBox="0 0 24 24">
+                <!-- Eye Open (default) -->
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 
+      5-5 5 2.24 5 5-2.24 5-5 5z" />
+                <circle cx="12" cy="12" r="2.5" />
+              </svg>
             </button>
           </div>
         </div>
