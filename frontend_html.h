@@ -205,7 +205,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     .modal {
       display: none;
       position: fixed;
-      z-index: 1000;
+      z-index: 9999;
       left: 0;
       top: 0;
       width: 100%;
@@ -215,57 +215,69 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     }
 
     .modal-content {
-      background: #2a2a2a;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(12px);
       margin: 5% auto;
-      padding: 30px;
-      border-radius: 15px;
+      padding: 20px 24px;
+      border-radius: 24px;
       width: 90%;
       max-width: 800px;
       max-height: 80vh;
       overflow-y: auto;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      border: 1px solid #ffd700;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 217, 0, 0.15);
+      border: 1px solid rgba(255, 217, 0, 0.15);
     }
 
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid #444;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
     }
 
     .modal-title {
-      color: #ffd700;
-      font-size: 1.5rem;
+      background: linear-gradient(to right, #ffd700, #ffb700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 1.4rem;
       font-weight: 600;
     }
 
     .close {
-      color: #aaa;
+      color: #94a3b8;
       font-size: 28px;
       font-weight: bold;
       cursor: pointer;
-      transition: color 0.2s;
+      transition: color 0.3s ease;
+      background: none;
+      border: none;
+      padding: 5px;
+      border-radius: 8px;
     }
 
     .close:hover {
       color: #ffd700;
+      background: rgba(255, 217, 0, 0.1);
     }
 
     .keyboard-illustration {
-      background: #3a3a3a;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: inset 0 0 0 1px rgba(255, 217, 0, 0.1);
     }
 
     .keyboard-illustration h2 {
       text-align: center;
-      margin-bottom: 15px;
-      color: #ffd700;
-      font-size: 1.2rem;
+      margin-bottom: 20px;
+      background: linear-gradient(to right, #ffd700, #ffb700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 1.4rem;
+      font-weight: 600;
     }
 
     .keyboard-row {
@@ -276,24 +288,30 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     }
 
     .key-display {
-      background: #4a4a4a;
+      background: rgba(15, 23, 42, 0.8);
       margin: 3px;
-      padding: 8px 12px;
-      border-radius: 5px;
+      padding: 10px 14px;
+      border-radius: 8px;
       font-size: 12px;
-      min-width: 30px;
+      min-width: 35px;
       text-align: center;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      color: #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(255, 217, 0, 0.1);
     }
 
     .key-display:hover {
-      background: #5a5a5a;
+      background: rgba(41, 55, 80, 0.8);
+      transform: translateY(-2px);
     }
 
     .key-display.pressed {
-      background: #ffd700;
-      color: #000;
+      background: linear-gradient(to right, #ffd700, #ffb700);
+      color: #0f172a;
       font-weight: bold;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
     }
 
     .key-display.space {
@@ -302,32 +320,133 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
 
     .modal-controls {
       display: flex;
-      gap: 10px;
+      gap: 15px;
       justify-content: center;
-      margin-top: 20px;
+      margin-top: 30px;
     }
 
     .modal-btn {
-      padding: 10px 20px;
+      padding: 14px 28px;
       border: none;
-      border-radius: 5px;
+      border-radius: 14px;
       cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .modal-btn.primary {
-      background: #ffd700;
-      color: #000;
+      background: linear-gradient(to right, #ffd700, #ffb700);
+      color: #0f172a;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    }
+
+    .modal-btn.primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 7px 20px rgba(255, 215, 0, 0.4);
     }
 
     .modal-btn.secondary {
-      background: #4a4a4a;
-      color: #fff;
+      background: rgba(30, 41, 59, 0.8);
+      color: #e2e8f0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(255, 217, 0, 0.2);
     }
 
-    .modal-btn:hover {
-      transform: translateY(-1px);
+    .modal-btn.secondary:hover {
+      background: rgba(41, 55, 80, 0.8);
+      transform: translateY(-3px);
+    }
+
+    /* WiFi Modal Styles */
+    .wifi-form {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #ffd700;
+      margin-bottom: 5px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 16px;
+      border-radius: 14px;
+      border: none;
+      background: rgba(30, 41, 59, 0.8);
+      color: #e2e8f0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(255, 217, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 217, 0, 0.4),
+        inset 0 0 0 1px rgba(255, 217, 0, 0.3);
+      background: rgba(41, 55, 80, 0.8);
+    }
+
+    .form-input::placeholder {
+      color: #64748b;
+    }
+
+    .password-container {
+      position: relative;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 5px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .password-toggle:hover {
+      color: #ffd700;
+      background: rgba(255, 217, 0, 0.1);
+    }
+
+    .wifi-info {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #ffd700;
+    }
+
+    .wifi-info-title {
+      color: #ffd700;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+
+    .wifi-info-text {
+      color: #94a3b8;
+      line-height: 1.6;
     }
 
     @media (max-width: 600px) {
@@ -338,13 +457,23 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
       .modal-content {
         width: 95%;
         margin: 10% auto;
-        padding: 20px;
+        padding: 25px;
       }
 
       .key-display {
         padding: 6px 10px;
         font-size: 11px;
         min-width: 25px;
+      }
+
+      .controls {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .modal-controls {
+        flex-direction: column;
+        gap: 12px;
       }
     }
   </style>
@@ -377,7 +506,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
             <path
               d="M213.333,128h85.333c35.346,0,64-28.654,64-64V1.366c-4.638-0.756-9.32-1.212-14.016-1.365H149.333v64   C149.333,99.346,177.987,128,213.333,128z" />
           </g>
-        </svg> Save Configuration
+        </svg> Save Keymapping
       </button>
 
       <button class="btn" id="resetBtn">
@@ -385,6 +514,12 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
           <path
             d="M19.146 4.854l-1.489 1.489A8 8 0 1 0 12 20a8.094 8.094 0 0 0 7.371-4.886 1 1 0 1 0-1.842-.779A6.071 6.071 0 0 1 12 18a6 6 0 1 1 4.243-10.243l-1.39 1.39a.5.5 0 0 0 .354.854H19.5A.5.5 0 0 0 20 9.5V5.207a.5.5 0 0 0-.854-.353z" />
         </svg> Reset to Defaults
+      </button>
+      <button class="btn" id="wifiBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.07 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+        </svg> WiFi Settings
       </button>
     </div>
 
@@ -426,24 +561,22 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         <div class="shortcut-text">Click to assign</div>
       </div>
     </div>
+  </div>
+  <!-- Keyboard Modal -->
+  <div id="keyboardModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Assign Shortcut</h2>
+        <span class="close" onclick="closeKeyboardModal()">&times;</span>
+      </div>
 
-    <!-- Keyboard Modal -->
-    <div id="keyboardModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title" id="modalTitle">Assign Shortcut</h2>
-          <span class="close" onclick="closeKeyboardModal()">&times;</span>
-        </div>
+      <div class="keyboard-illustration">
+        <div class="keyboard-keys" id="keyboardKeys"></div>
+      </div>
 
-        <div class="keyboard-illustration">
-          <h2>Interactive Keyboard Layout</h2>
-          <div class="keyboard-keys" id="keyboardKeys"></div>
-        </div>
-
-        <div class="modal-controls">
-          <button class="modal-btn secondary" onclick="clearCurrentShortcut()">Clear Shortcut</button>
-          <button class="modal-btn primary" onclick="saveCurrentShortcut()">Save Shortcut</button>
-        </div>
+      <div class="modal-controls">
+        <button class="modal-btn secondary" onclick="clearCurrentShortcut()">Clear Shortcut</button>
+        <button class="modal-btn primary" onclick="saveCurrentShortcut()">Save Shortcut</button>
       </div>
     </div>
   </div>
@@ -460,6 +593,107 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     // Global pressed keys tracking for toggle behavior
     let pressedKeys = new Set();
     let pressedKeyCodes = new Set();
+
+    // WiFi Modal Functions
+    function openWifiModal() {
+      document.getElementById('wifiModal').style.display = 'block';
+      // Clear previous values
+      document.getElementById('ssidInput').value = '';
+      document.getElementById('passwordInput').value = '';
+      // Focus on SSID input
+      setTimeout(() => {
+        document.getElementById('ssidInput').focus();
+      }, 100);
+    }
+
+    function closeWifiModal() {
+      document.getElementById('wifiModal').style.display = 'none';
+    }
+
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('passwordInput');
+      const toggleIcon = document.getElementById('passwordToggleIcon');
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.innerHTML = `
+      <!-- Eye Off SVG -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" fill="none"
+        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3 3l18 18M10.73 5.08A10.45 10.45 0 0112 5c5 0 9.27 3.11 
+             11 7.5a10.9 10.9 0 01-4.07 4.99M6.88 6.88A10.47 10.47 0 001 12.5
+             C2.73 16.89 7 20 12 20c1.61 0 3.13-.31 4.5-.88M9.88 9.88A3 3 0 0012 15
+             a3 3 0 002.12-.88" />
+      </svg>
+    `;
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.innerHTML = `
+      <!-- Eye Open SVG -->
+      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 
+        11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 
+        12.5c-2.76 0-5-2.24-5-5s2.24-5 
+        5-5 5 2.24 5 5-2.24 5-5 5z"/>
+      <circle cx="12" cy="12" r="2.5"/>
+    `;
+      }
+    }
+
+    function saveWifiCredentials(event) {
+      event.preventDefault();
+
+      const ssid = document.getElementById('ssidInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+
+      if (!ssid) {
+        alert('Please enter a network name (SSID)');
+        return;
+      }
+
+      if (!password) {
+        alert('Please enter a password');
+        return;
+      }
+
+      // Show loading state
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      const originalContent = submitBtn.innerHTML;
+      submitBtn.innerHTML = 'Connecting...';
+      submitBtn.disabled = true;
+
+      // Send POST request to save WiFi credentials
+      fetch("http://192.168.4.1/wifi", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ssid: ssid,
+          password: password
+        })
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(data => {
+          console.log("WiFi credentials saved:", data);
+          alert("WiFi settings saved successfully! The device will now attempt to connect to the network.");
+          closeWifiModal();
+        })
+        .catch(error => {
+          console.error("Error saving WiFi credentials:", error);
+          alert("Failed to save WiFi settings. Please check your connection and try again.");
+        })
+        .finally(() => {
+          // Restore button state
+          submitBtn.innerHTML = originalContent;
+          submitBtn.disabled = false;
+        });
+    }
 
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -484,7 +718,23 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         .catch(err => {
           console.error("Error fetching key mappings:", err);
         });
+
+      // Add these lines inside the DOMContentLoaded event listener
+
+      // Add WiFi button event listener
+      document.getElementById('wifiBtn').addEventListener('click', openWifiModal);
+
+      // Add WiFi form submit event listener
+      document.getElementById('wifiForm').addEventListener('submit', saveWifiCredentials);
+
+      // Close WiFi modal when clicking outside
+      document.getElementById('wifiModal').addEventListener('click', function (event) {
+        if (event.target === this) {
+          closeWifiModal();
+        }
+      });
     });
+
 
     // Global modal functions
     function openKeyboardModal(box, index) {
@@ -1270,6 +1520,57 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         <button class="modal-btn primary" id="restartOkBtn">OK</button>
         <button class="modal-btn secondary" id="restartCancelBtn">Cancel</button>
       </div>
+    </div>
+  </div>
+  <!-- WiFi Settings Modal -->
+  <div id="wifiModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2 class="modal-title">WiFi Network Settings</h2>
+        <span class="close" onclick="closeWifiModal()">&times;</span>
+      </div>
+
+      <div class="wifi-info">
+        <div class="wifi-info-title">Configure Network Connection</div>
+        <div class="wifi-info-text">Enter your WiFi network credentials to connect the device to your wireless network.
+        </div>
+      </div>
+
+      <form class="wifi-form" id="wifiForm">
+        <div class="form-group">
+          <label class="form-label" for="ssidInput">Network Name (SSID)</label>
+          <input type="text" id="ssidInput" class="form-input" placeholder="Enter WiFi network name" required
+            autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="passwordInput">Password</label>
+          <div class="password-container">
+            <input type="password" id="passwordInput" class="form-input" placeholder="Enter WiFi password" required
+              autocomplete="off" />
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">
+              <svg id="passwordToggleIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                viewBox="0 0 24 24">
+                <!-- Eye Open (default) -->
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 
+      5-5 5 2.24 5 5-2.24 5-5 5z" />
+                <circle cx="12" cy="12" r="2.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-controls">
+          <button type="button" class="modal-btn secondary" onclick="closeWifiModal()">Cancel</button>
+          <button type="submit" class="modal-btn primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.07 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+            </svg>
+            Save WiFi Settings
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </body>
