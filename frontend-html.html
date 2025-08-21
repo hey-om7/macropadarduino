@@ -721,7 +721,7 @@
               shortcutText.textContent = readableShortcut;
 
               // Save to shortcutsList (store original codes if you want to keep logic intact)
-              shortcutsList[index] = data[index]; // Store as array
+              shortcutsList[index] = data[index].join('+');  // Store as array
             } else {
               shortcutText.textContent = "Click to assign";
               shortcutsList[index] = []; // Store empty array

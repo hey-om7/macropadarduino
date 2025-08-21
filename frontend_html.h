@@ -149,8 +149,8 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     .key-box {
       background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
       border-radius: 20px;
-      padding: 20px 15px;
-      text-align: center;
+      padding: 20px 25px;
+      text-align: left;
       cursor: pointer;
       transition: all 0.3s ease;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
@@ -158,7 +158,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
       display: flex;
       flex-direction: column;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       min-height: 120px;
       position: relative;
       overflow: hidden;
@@ -187,16 +187,21 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     }
 
     .key-box .action-label {
-      font-size: 1rem;
       color: #e2e8f0;
-      font-weight: 500;
       margin-bottom: 10px;
+      font-size: 1.2rem;
+      font-weight: 700;
     }
 
     .key-box .shortcut-text {
       font-size: 0.9rem;
-      color: #e2e8f0;
-      font-weight: 500;
+      background: rgba(255, 217, 0, 0.1);
+      border: 1px solid rgba(255, 217, 0, 0.3);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: monospace;
+      color: #ffd700;
+      align-self: flex-start;
       margin-top: 10px;
       min-height: 20px;
     }
@@ -482,7 +487,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
 <body>
   <div class="container">
     <header>
-      <h1>Keyboard Shortcut Manager</h1>
+      <h1>DLS MacroPad Configuration Panel</h1>
       <p class="subtitle">Customize and visualize your keyboard shortcuts with our modern interface. Assign shortcuts to
         actions and see them displayed on the interactive keyboard.</p>
     </header>
@@ -586,6 +591,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     let currentModalIndex = -1;
     let currentModalBox = null;
     let currentShortcut = '';
+    const reverseKeyMapping = {};
 
     // Global shortcuts list (9 elements for numpad positions 0x1 to 0x9)
     let shortcutsList = new Array(9).fill('');
@@ -706,12 +712,20 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
           // Map keyMappings to shortcut boxes
           document.querySelectorAll('.key-box').forEach((box, index) => {
             const shortcutText = box.querySelector('.shortcut-text');
-            if (data[index]) {
-              shortcutText.textContent = data[index].join(" + ");
-              shortcutsList[index] = data[index].join(" + "); // <-- Map to shortcutsList
+            if (data[index] && data[index].length) {
+              // Convert each code to human-readable
+              const readableShortcut = data[index]
+                .map(code => reverseKeyMapping[code] || code)
+                .join(' + ');
+
+              // Update UI
+              shortcutText.textContent = readableShortcut;
+
+              // Save to shortcutsList (store original codes if you want to keep logic intact)
+              shortcutsList[index] = data[index].join('+');  // Store as array
             } else {
               shortcutText.textContent = "Click to assign";
-              shortcutsList[index] = ""; // <-- Ensure empty if not present
+              shortcutsList[index] = []; // Store empty array
             }
           });
         })
@@ -802,9 +816,14 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
     function saveCurrentShortcut() {
       if (currentShortcut && currentModalBox) {
         const actionLabel = currentModalBox.querySelector('.action-label').textContent;
+        const shortcutArray = currentShortcut.split('+'); // ['KeyA', 'ShiftLeft']
+        // Convert currentShortcut codes to human-readable names
+        const readableShortcut = shortcutArray
+          .map(code => reverseKeyMapping[code.trim()] || code.trim())
+          .join(' + ');
 
         // Update the shortcut text in the grid
-        currentModalBox.querySelector('.shortcut-text').textContent = currentShortcut;
+        currentModalBox.querySelector('.shortcut-text').textContent = readableShortcut;
 
         // Save to the global shortcuts list (numpad position mapping)
         // 0x1 = index 0, 0x2 = index 1, 0x3 = index 2, etc.
@@ -821,7 +840,6 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         console.log('===============================');
 
         console.log(`Shortcut saved for "${actionLabel}": ${currentShortcut}`);
-        alert(`Shortcut for "${actionLabel}" saved: ${currentShortcut}`);
         closeKeyboardModal();
       } else {
         alert('Please press a key combination first.');
@@ -870,10 +888,10 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         'ArrowRight': 'KEY_RIGHT_ARROW',
 
         // Modifier keys
-        'Control': 'KEY_LEFT_CTRL',
-        'Shift': 'KEY_LEFT_SHIFT',
+        'CTRL': 'KEY_LEFT_CTRL',
+        'SHIFT': 'KEY_LEFT_SHIFT',
         'Alt': 'KEY_LEFT_ALT',
-        'Meta': 'KEY_LEFT_GUI',
+        'CMD': 'KEY_LEFT_GUI',
 
         // Media keys
         'MediaPlayPause': 'KEY_MEDIA_PLAY_PAUSE',
@@ -932,6 +950,24 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         "Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift",
         "Ctrl", "Win", "Alt", { text: "Space", cls: "space" }, "Alt", "Win", "Menu", "←", "↑", "↓", "→"
       ];
+
+      // Build reverse mapping (technical -> human-readable)
+
+
+      // Go through main mapping
+      for (const [human, code] of Object.entries(keyMappingReference)) {
+        reverseKeyMapping[code] = human;
+      }
+
+      // Go through enhanced mapping too
+      for (const [human, code] of Object.entries(enhancedKeyMapping)) {
+        // Only set if not already present (to avoid overwriting)
+        if (!reverseKeyMapping[code]) {
+          reverseKeyMapping[code] = human;
+        }
+      }
+
+      console.log("Reverse mapping generated:", reverseKeyMapping);
 
       const keyboardKeysDiv = document.getElementById("keyboardKeys");
       const osSelect = document.getElementById("osSelect");
