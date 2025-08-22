@@ -530,39 +530,39 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
 
     <div class="grid" id="shortcutGrid">
       <div class="key-box" onclick="openKeyboardModal(this, 0)">
-        <div class="action-label">New Document</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 1)">
-        <div class="action-label">Save File</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 2)">
-        <div class="action-label">Copy Selection</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 3)">
-        <div class="action-label">Paste Content</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 4)">
-        <div class="action-label">Undo Action</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 5)">
-        <div class="action-label">Find Text</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 6)">
-        <div class="action-label">Toggle Fullscreen</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 7)">
-        <div class="action-label">Print Document</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
       <div class="key-box" onclick="openKeyboardModal(this, 8)">
-        <div class="action-label">Refresh Page</div>
+        <div class="action-label">Loading...</div>
         <div class="shortcut-text">Click to assign</div>
       </div>
     </div>
@@ -748,6 +748,20 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         }
       });
     });
+
+    fetch("http://192.168.4.1/getkeynames")
+      .then(response => response.json())
+      .then(names => {
+        document.querySelectorAll('.key-box').forEach((box, index) => {
+          const actionLabel = box.querySelector('.action-label');
+          if (names[index]) {
+            actionLabel.textContent = names[index];
+          }
+        });
+      })
+      .catch(err => {
+        console.error("Error fetching key names:", err);
+      });
 
 
     // Global modal functions
