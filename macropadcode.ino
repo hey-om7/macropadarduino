@@ -12,12 +12,19 @@
 #include "frontend_html.h"
 #include "esp_sleep.h"
 
-#define EEPROM_SIZE 2048
+#define EEPROM_SIZE 3048
 #define MAPPING_COUNT 9
 #define MAX_KEYS_PER_MAPPING 6
 #define VERSION_EEPROM_ADDR 0  // reserve 50 bytes max
 #define WIFI_EEPROM_ADDR 50    // SSID at 50, password at 85
 #define KEYMAPPINGS_ADDR 120
+
+// Keymapping Names
+#define KEYNAMES_ADDR 2048
+#define KEYNAME_MAXLEN 20
+#define KEYNAME_COUNT 9
+String keyNames[KEYNAME_COUNT];
+
 constexpr int WAKE_MODE_TIMEOUT = 60;  // 60 seconds for wake mode
 
 
@@ -80,6 +87,40 @@ String readStringFromEEPROM(int addr) {
     value += (char)EEPROM.read(addr++);
   }
   return value;
+}
+
+void saveKeyNamesToEEPROM(const String names[], int count) {
+  int addr = KEYNAMES_ADDR;
+  for (int i = 0; i < count; i++) {
+    String name = names[i];
+    if (name.length() > KEYNAME_MAXLEN) {
+      name = name.substring(0, KEYNAME_MAXLEN); // truncate if too long
+    }
+    byte len = name.length();
+    EEPROM.write(addr++, len);
+    for (int j = 0; j < len; j++) {
+      EEPROM.write(addr++, name[j]);
+    }
+    // pad with zeros if shorter
+    for (int j = len; j < KEYNAME_MAXLEN; j++) {
+      EEPROM.write(addr++, 0);
+    }
+  }
+  EEPROM.commit();
+}
+
+void loadKeyNamesFromEEPROM(String names[], int count) {
+  int addr = KEYNAMES_ADDR;
+  for (int i = 0; i < count; i++) {
+    byte len = EEPROM.read(addr++);
+    if (len > KEYNAME_MAXLEN) len = KEYNAME_MAXLEN; // avoid overflow
+    String name = "";
+    for (int j = 0; j < len; j++) {
+      name += (char)EEPROM.read(addr++);
+    }
+    addr += (KEYNAME_MAXLEN - len); // skip padding
+    names[i] = name;
+  }
 }
 
 void playBeep(int tuneFrequency = 1000) {
@@ -302,8 +343,47 @@ void startHotspotAndServer() {
   server.on("/savekeymapping", HTTP_POST, handleSave);
   server.on("/getkeymapping", HTTP_GET, handleGet);
   server.on("/wifi", HTTP_POST, handleWiFiSave);
+  server.on("/getkeynames", HTTP_GET, handleGetKeyNames);
+  server.on("/savekeynames", HTTP_POST, handleSaveKeyNames);
   server.begin();
   Serial.println("HTTP Server started");
+}
+
+void handleSaveKeyNames() {
+  if (!server.hasArg("plain")) return server.send(400, "text/plain", "No body");
+
+  StaticJsonDocument<512> doc;  // adjust size if needed
+  DeserializationError err = deserializeJson(doc, server.arg("plain"));
+  if (err) return server.send(400, "text/plain", "Invalid JSON");
+
+  if (!doc.is<JsonArray>() || doc.size() != KEYNAME_COUNT) {
+    return server.send(400, "text/plain", "Expected JSON array of size 9");
+  }
+
+  for (int i = 0; i < KEYNAME_COUNT; i++) {
+    String value = String((const char*)doc[i]);
+    if (value.length() > KEYNAME_MAXLEN) {
+      return server.send(400, "text/plain", "Key name too long (max 20 chars): index " + String(i));
+    }
+    keyNames[i] = value;
+  }
+
+  saveKeyNamesToEEPROM(keyNames, KEYNAME_COUNT);
+  server.send(200, "text/plain", "Key names saved successfully");
+}
+
+void handleGetKeyNames() {
+  loadKeyNamesFromEEPROM(keyNames, KEYNAME_COUNT);
+
+  StaticJsonDocument<512> doc;
+  JsonArray arr = doc.to<JsonArray>();
+  for (int i = 0; i < KEYNAME_COUNT; i++) {
+    arr.add(keyNames[i]);
+  }
+
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
 }
 
 // ---------- Key Mapping ----------
