@@ -936,7 +936,7 @@ const char FRONTEND_HTML[] PROGMEM = R"rawliteral(
         ']': 'KEY_RIGHT_BRACKET',
         '\\': 'KEY_BACKSLASH',
         ';': 'KEY_SEMICOLON',
-        "'": 'KEY_QUOTE',
+        "'": "'",
         ',': 'KEY_COMMA',
         '.': 'KEY_PERIOD',
         '/': 'KEY_SLASH',
