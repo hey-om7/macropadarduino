@@ -59,7 +59,7 @@ unsigned long keyPressStartTime = 0;
 bool isWakeModeActive = false;      // Toggle sending mode
 unsigned long lastKeySendTime = 0;  // Timer for sending 'a' every 5s
 
-const char *ipServer = "52.66.6.129";
+const char *ipServer = "65.0.33.45:8090";
 String firmwareBinUrl;
 String versionCheckUrl;
 String CURRENT_VERSION;
@@ -500,8 +500,8 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   String macAddress = WiFi.macAddress();
-  firmwareBinUrl = "http://" + String(ipServer) + ":8080/api/v1/device/firmware?macAddress=" + macAddress;
-  versionCheckUrl = "http://" + String(ipServer) + ":8080/api/v1/device/firmware/version?macAddress=" + macAddress;
+  firmwareBinUrl = "http://" + String(ipServer) + "/api/v1/device/firmware?macAddress=" + macAddress;
+  versionCheckUrl = "http://" + String(ipServer) + "/api/v1/device/firmware/version?macAddress=" + macAddress;
   Serial.println("Mac address: " + macAddress);
 
   BLESecurity *pSecurity = new BLESecurity();
